@@ -1,0 +1,144 @@
+name: Build Release APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: 'Version name (e.g., 1.0.0)'
+        required: true
+        type: string
+      version_code:
+        description: 'Version code (incrementing number)'
+        required: true
+        type: string
+  push:
+    tags:
+      - 'v*'
+  release:
+    types: [created]
+
+env:
+  GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx2048m -Dorg.gradle.daemon=false"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '11'
+        cache: 'gradle'
+
+    - name: Set up Android SDK
+      uses: android-actions/setup-android@v3
+
+    - name: Extract version from tag (if tag triggered)
+      if: startsWith(github.ref, 'refs/tags/')
+      run: |
+        TAG=${GITHUB_REF#refs/tags/v}
+        echo "VERSION_NAME=$TAG" >> $GITHUB_ENV
+        # Extract version code from tag or use timestamp
+        VERSION_CODE=$(date +%s)
+        echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_ENV
+
+    - name: Set version from workflow input
+      if: github.event_name == 'workflow_dispatch'
+      run: |
+        echo "VERSION_NAME=${{ github.event.inputs.version_name }}" >> $GITHUB_ENV
+        echo "VERSION_CODE=${{ github.event.inputs.version_code }}" >> $GITHUB_ENV
+
+    - name: Set version from release
+      if: github.event_name == 'release'
+      run: |
+        TAG=${GITHUB_REF#refs/tags/}
+        TAG=${TAG#v}
+        echo "VERSION_NAME=$TAG" >> $GITHUB_ENV
+        VERSION_CODE=$(date +%s)
+        echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_ENV
+
+    - name: Create keystore from secrets
+      run: |
+        echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > app/release.keystore
+        chmod 600 app/release.keystore
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - name: Build Release APK
+      env:
+        RELEASE_STORE_FILE: app/release.keystore
+        RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+        RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+        RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        TERMUX_APP_VERSION_NAME: ${{ env.VERSION_NAME }}
+        TERMUX_APP_VERSION_CODE: ${{ env.VERSION_CODE }}
+      run: |
+        ./gradlew assembleRelease \
+          --no-daemon \
+          --stacktrace
+
+    - name: Find APK files
+      id: find_apk
+      run: |
+        APK_FILES=$(find app/build/outputs/apk -name "*.apk" -type f)
+        echo "apk_files<<EOF" >> $GITHUB_OUTPUT
+        echo "$APK_FILES" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        echo "Found APK files:"
+        echo "$APK_FILES"
+
+    - name: Upload APK artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: termos-release-apk
+        path: |
+          app/build/outputs/apk/**/*.apk
+        retention-days: 90
+
+    - name: Create checksums
+      working-directory: app/build/outputs/apk
+      run: |
+        for apk in *.apk; do
+          sha256sum "$apk" > "${apk}.sha256"
+        done
+
+    - name: Upload checksums
+      uses: actions/upload-artifact@v4
+      with:
+        name: termos-release-checksums
+        path: app/build/outputs/apk/*.sha256
+        retention-days: 90
+
+    - name: Create GitHub Release
+      if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          app/build/outputs/apk/**/*.apk
+          app/build/outputs/apk/**/*.sha256
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Output build info
+      run: |
+        echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- Version Name: ${{ env.VERSION_NAME }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Version Code: ${{ env.VERSION_CODE }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Build Date: $(date)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### APK Files" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        find app/build/outputs/apk -name "*.apk" -type f >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+
