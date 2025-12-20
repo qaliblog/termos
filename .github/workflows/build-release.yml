@@ -81,9 +81,7 @@ jobs:
         TERMUX_APP_VERSION_NAME: ${{ env.VERSION_NAME }}
         TERMUX_APP_VERSION_CODE: ${{ env.VERSION_CODE }}
       run: |
-        ./gradlew assembleRelease \
-          --no-daemon \
-          --stacktrace
+        ./gradlew assembleRelease --no-daemon
 
     - name: Find APK files
       id: find_apk
