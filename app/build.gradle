@@ -49,7 +49,16 @@ android {
         def envVersionCode = System.getenv('TERMUX_APP_VERSION_CODE')
         def envVersionName = System.getenv('TERMUX_APP_VERSION_NAME')
         
-        versionCode envVersionCode ? envVersionCode.toInteger() : 118
+        // Validate versionCode is a valid integer
+        def versionCodeValue = 118
+        if (envVersionCode) {
+            try {
+                versionCodeValue = envVersionCode.toInteger()
+            } catch (NumberFormatException e) {
+                throw new GradleException("TERMUX_APP_VERSION_CODE must be an integer, but got: '${envVersionCode}'. versionCode must be an integer value, not a version string like '0.0.1'.")
+            }
+        }
+        versionCode versionCodeValue
         versionName envVersionName ?: "0.118.0"
 
         if (appVersionName) versionName = appVersionName
