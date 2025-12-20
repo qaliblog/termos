@@ -37,3 +37,8 @@ local.properties
 .swp
 ehthumbs.db
 Thumbs.db
+
+# Release keystore
+app/release.keystore
+*.keystore
+*.jks
