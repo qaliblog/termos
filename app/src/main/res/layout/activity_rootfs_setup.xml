@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="24dp"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Header -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Welcome to Termos"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Choose a Linux distribution to install"
+            android:textSize="16sp"
+            android:gravity="center"
+            android:layout_marginBottom="24dp" />
+
+        <!-- Rootfs Type Selection -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Linux Distribution"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="12dp" />
+
+        <RadioGroup
+            android:id="@+id/rootfs_type_group"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <RadioButton
+                android:id="@+id/rootfs_alpine"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Alpine Linux"
+                android:checked="true"
+                android:padding="12dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Lightweight, security-oriented Linux distribution"
+                android:textSize="12sp"
+                android:textColor="@android:color/darker_gray"
+                android:paddingStart="32dp"
+                android:paddingEnd="16dp"
+                android:layout_marginBottom="8dp" />
+
+            <RadioButton
+                android:id="@+id/rootfs_ubuntu"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Ubuntu"
+                android:padding="12dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Popular Debian-based Linux distribution"
+                android:textSize="12sp"
+                android:textColor="@android:color/darker_gray"
+                android:paddingStart="32dp"
+                android:paddingEnd="16dp"
+                android:layout_marginBottom="8dp" />
+
+            <RadioButton
+                android:id="@+id/rootfs_custom"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Custom Rootfs"
+                android:padding="12dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Enter a custom rootfs URL"
+                android:textSize="12sp"
+                android:textColor="@android:color/darker_gray"
+                android:paddingStart="32dp"
+                android:paddingEnd="16dp"
+                android:layout_marginBottom="16dp" />
+
+        </RadioGroup>
+
+        <!-- Custom URL Layout -->
+        <LinearLayout
+            android:id="@+id/custom_url_layout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:layout_marginBottom="16dp">
+
+            <EditText
+                android:id="@+id/custom_url_edit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Rootfs URL (e.g., https://example.com/rootfs.tar.gz)"
+                android:inputType="textUri"
+                android:padding="12dp"
+                android:layout_marginBottom="8dp" />
+
+            <EditText
+                android:id="@+id/rootfs_name_edit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Rootfs Name (optional)"
+                android:inputType="text"
+                android:padding="12dp" />
+
+        </LinearLayout>
+
+        <!-- Status Text -->
+        <TextView
+            android:id="@+id/status_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textSize="14sp"
+            android:gravity="center"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"
+            android:minHeight="48dp" />
+
+        <!-- Progress Bar -->
+        <ProgressBar
+            android:id="@+id/progress_bar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="100"
+            android:progress="0"
+            android:visibility="gone"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Install Button -->
+        <Button
+            android:id="@+id/install_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Install"
+            android:textSize="16sp"
+            android:padding="16dp"
+            android:layout_marginTop="16dp" />
+
+    </LinearLayout>
+
+</ScrollView>
+
