@@ -1,9 +1,5 @@
 include ':app', ':termux-shared', ':terminal-emulator', ':terminal-view'
 
 // Include remote-desktop-clients modules for VNC support
-def remoteDesktopClientsPath = '../remote-desktop-clients'
-project(':remoteClientLib').projectDir = new File(remoteDesktopClientsPath, 'remoteClientLib')
-project(':common').projectDir = new File(remoteDesktopClientsPath, 'common')
-project(':bVNC').projectDir = new File(remoteDesktopClientsPath, 'bVNC')
-
+// These modules are now copied into the termos folder
 include ':remoteClientLib', ':common', ':bVNC'
