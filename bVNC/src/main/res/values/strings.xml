@@ -9,6 +9,7 @@
     <string name="action_delete_connection">Delete Connection</string>
     <string name="action_rate_or_share_app">Get Help, Rate, Share</string>
     <string name="get_help">Get Help</string>
+    <string name="app_name">bVNC</string>
     <string name="opaque_app_name">Opaque</string>
     <string name="opaque_app_name_beta">Opaque Beta</string>
     <string name="advanced_settings">Advanced Settings</string>
