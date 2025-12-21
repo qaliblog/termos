@@ -1,4 +1,4 @@
-<com.termux.app.terminal.TermuxActivityRootView xmlns:android="http://schemas.android.com/apk/res/android"
+<com.termos.app.terminal.TermuxActivityRootView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/activity_termux_root_view"
@@ -119,4 +119,4 @@
         android:layout_height="1dp"
         android:background="@android:color/transparent" />
 
-</com.termux.app.terminal.TermuxActivityRootView>
+</com.termos.app.terminal.TermuxActivityRootView>
