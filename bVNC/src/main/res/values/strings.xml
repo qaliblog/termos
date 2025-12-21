@@ -928,4 +928,13 @@ Below that is where you configure your connection.
     <string name="desktop_scale_percentage">Custom Scaling Percentage</string>
     <string name="show_menu">Show Menu</string>
     <string name="move_toolbar">Move Toolbar</string>
+    
+    <!-- Missing string resources -->
+    <string name="title_help">Help</string>
+    <string name="menu_help">Help</string>
+    <string name="settings_username">Username</string>
+    <string name="settings_password">Password</string>
+    <string name="settings_domain">Domain</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
 </resources>
