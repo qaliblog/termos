@@ -3,8 +3,6 @@ package com.iiordanov.pubkeygenerator;
 import com.trilead.ssh2.crypto.PEMDecoder;
 
 import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
-import java.security.spec.InvalidKeySpecException;
 
 /**
  * Utility class for handling SSH public/private key operations.
@@ -63,11 +61,8 @@ public class PubkeyUtils {
         } catch (IOException e) {
             // Key decryption failed - likely wrong passphrase
             return null;
-        } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
-            // Unsupported key format
-            return null;
         } catch (Exception e) {
-            // Any other error
+            // Any other error (unsupported key format, etc.)
             return null;
         }
     }
