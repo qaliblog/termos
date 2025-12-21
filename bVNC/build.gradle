@@ -36,12 +36,8 @@ android {
         // Exclude RDP-related files if FreeRDP is not available
         def freeRdpAvailable = findProject(':remoteClientLib:jni:libs:deps:FreeRDP:client:Android:Studio:freeRDPCore') != null
         if (!freeRdpAvailable) {
-            java {
-                exclude '**/RemoteRdpConnection.kt'
-            }
-            kotlin {
-                exclude '**/RemoteRdpConnection.kt'
-            }
+            java.exclude '**/protocol/RemoteRdpConnection.kt'
+            java.exclude '**/RemoteRdpConnection.kt'
         }
     }
     
