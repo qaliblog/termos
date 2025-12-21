@@ -922,10 +922,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
 
 
-    public TermuxService getTermuxService() {
-        return mTermuxService;
-    }
-
     public TerminalView getTerminalView() {
         return mTerminalView;
     }

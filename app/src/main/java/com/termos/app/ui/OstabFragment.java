@@ -52,7 +52,7 @@ public class OstabFragment extends Fragment {
         // Set service client for command execution (auto-start VNC server)
         TermuxActivity activity = (TermuxActivity) getActivity();
         if (activity != null && activity.getTermuxService() != null) {
-            vncManager.setServiceClient(activity.getTermuxService().getTermuxTerminalSessionServiceClient());
+            vncManager.setServiceClient(activity.getTermuxService().getTermuxTerminalSessionClient());
         }
         
         Log.d(TAG, "VNC viewer initialized");

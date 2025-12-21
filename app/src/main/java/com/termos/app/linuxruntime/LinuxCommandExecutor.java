@@ -4,7 +4,10 @@ import android.content.Context;
 import android.util.Log;
 import com.termux.shared.shell.command.ExecutionCommand;
 import com.termux.shared.shell.command.runner.app.AppShell;
-import com.termux.shared.shell.command.runner.app.AppShellExecutionEnvironment;
+import com.termux.shared.shell.command.environment.IShellEnvironment;
+import com.termux.shared.termux.shell.command.environment.TermuxShellEnvironment;
+
+import java.util.HashMap;
 
 /**
  * Executes commands in the Linux rootfs environment using proot.
@@ -51,47 +54,58 @@ public class LinuxCommandExecutor {
         
         try {
             // Create execution command for background execution
-            // The command will run in Linux rootfs because TermuxService
-            // detects Linux runtime and uses proot-based sessions
             ExecutionCommand executionCommand = new ExecutionCommand(
                 "linux-cmd-" + System.currentTimeMillis(),
                 "/bin/sh",
                 new String[]{"-c", command},
                 null, // stdin
                 "/root", // working directory
-                com.termux.shared.shell.command.runner.Runner.APP_SHELL.getName(),
+                ExecutionCommand.Runner.APP_SHELL.getName(),
                 false // not failsafe
             );
             
-            // Execute in background
-            AppShellExecutionEnvironment executionEnvironment = new AppShellExecutionEnvironment(
-                context,
-                null, // activity client (not needed for background)
-                serviceClient
-            );
+            // Create shell environment
+            IShellEnvironment shellEnvironment = new TermuxShellEnvironment();
             
-            AppShell.execute(context, executionCommand, executionEnvironment, new AppShell.ExecutionCallback() {
+            // Create AppShellClient to handle completion
+            AppShell.AppShellClient appShellClient = new AppShell.AppShellClient() {
                 @Override
-                public void onExecutionStart(ExecutionCommand executionCommand) {
-                    Log.d(TAG, "Command execution started: " + command);
-                }
-                
-                @Override
-                public void onExecutionComplete(ExecutionCommand executionCommand) {
-                    int exitCode = executionCommand.exitCode;
+                public void onAppShellExited(AppShell appShell) {
+                    if (appShell == null || appShell.mExecutionCommand == null) {
+                        if (callback != null) {
+                            callback.onError("Command execution failed");
+                        }
+                        return;
+                    }
+                    
+                    ExecutionCommand cmd = appShell.getExecutionCommand();
+                    int exitCode = cmd.resultData.exitCode;
+                    String stdout = cmd.resultData.stdout.toString();
+                    String stderr = cmd.resultData.stderr.toString();
+                    
                     Log.d(TAG, "Command execution completed: " + command + " (exit code: " + exitCode + ")");
                     
                     if (callback != null) {
                         if (exitCode == 0) {
-                            callback.onSuccess(executionCommand.stdout);
+                            callback.onSuccess(stdout);
                         } else {
-                            callback.onError("Command failed with exit code " + exitCode + ": " + executionCommand.stderr);
+                            callback.onError("Command failed with exit code " + exitCode + ": " + stderr);
                         }
                     }
                 }
-            });
+            };
             
-            return true;
+            // Execute in background (isSynchronous = false)
+            AppShell appShell = AppShell.execute(
+                context,
+                executionCommand,
+                appShellClient,
+                shellEnvironment,
+                null, // additionalEnvironment
+                false // isSynchronous
+            );
+            
+            return appShell != null;
             
         } catch (Exception e) {
             Log.e(TAG, "Failed to execute command: " + command, e);
@@ -181,4 +195,3 @@ public class LinuxCommandExecutor {
         void onResult(boolean isRunning);
     }
 }
-

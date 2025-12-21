@@ -13,7 +13,7 @@ import com.iiordanov.bVNC.protocol.RemoteVncConnection;
 import com.termos.app.linuxruntime.LinuxCommandExecutor;
 import com.termux.terminal.TerminalSessionClient;
 import com.undatech.opaque.RemoteClientLibConstants;
-import com.undatech.opaque.RemoteConnection;
+import com.iiordanov.bVNC.protocol.RemoteConnection;
 
 /**
  * Manages VNC connection lifecycle for the OS tab.
@@ -69,7 +69,7 @@ public class VNCConnectionManager {
         connection.setNickname("Termos OS");
         connection.setConnectionType(Constants.CONN_TYPE_PLAIN);
         connection.setColorModel(com.iiordanov.bVNC.COLORMODEL.C24bit.nameString());
-        connection.setPrefEncoding(com.iiordanov.bVNC.RfbProto.EncodingTight);
+        connection.setPrefEncoding(7); // RfbProto.EncodingTight
         connection.setPassword(""); // No password by default, can be configured later
         connection.setKeepPassword(false);
         

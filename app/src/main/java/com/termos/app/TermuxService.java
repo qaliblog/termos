@@ -609,7 +609,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
                     com.termos.app.linuxruntime.LinuxCommandExecutor commandExecutor = 
                         new com.termos.app.linuxruntime.LinuxCommandExecutor(this);
                     commandExecutor.runSetupIfNeeded(
-                        getTermuxTerminalSessionServiceClient(),
+                        getTermuxTerminalSessionClient(),
                         new com.termos.app.linuxruntime.LinuxCommandExecutor.CommandCallback() {
                             @Override
                             public void onSuccess(String output) {
@@ -628,7 +628,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
                     // Use LinuxSessionCreator to create proot-based session
                     // Default to ALPINE mode (0), could be made configurable
                     int workingMode = 0; // TODO: Make this configurable via preferences
-                    String sessionId = executionCommand.shellName != null ? executionCommand.shellName : "session-" + executionCommand.getCommandId();
+                    String sessionId = executionCommand.shellName != null ? executionCommand.shellName : "session-" + System.currentTimeMillis();
                     
                     TerminalSession terminalSession = LinuxSessionCreator.createSession(
                         this,
@@ -649,7 +649,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
                                 TermuxSession.class.getDeclaredConstructor(
                                     TerminalSession.class, 
                                     ExecutionCommand.class,
-                                    TermuxSessionClient.class,
+                                    TermuxSession.TermuxSessionClient.class,
                                     boolean.class
                                 );
                             constructor.setAccessible(true);
@@ -685,7 +685,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
                     // Fall through to use default Termux session creation
                 }
             } else {
-                Logger.logWarning(LOG_TAG, "Rootfs not installed, cannot create Linux session. User should be redirected to setup.");
+                Logger.logWarn(LOG_TAG, "Rootfs not installed, cannot create Linux session. User should be redirected to setup.");
                 // Fall through to use default Termux session creation (will likely fail)
             }
         }
