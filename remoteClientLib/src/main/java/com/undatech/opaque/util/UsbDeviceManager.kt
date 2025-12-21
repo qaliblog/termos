@@ -70,13 +70,21 @@ class UsbDeviceManager(val context: Context, val usbEnabled: Boolean) {
         Log.i(TAG, "Requesting permissions for all USB devices")
         val d = this.getUnrequested()
         if (d != null) {
-            val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_ALLOW_UNSAFE_IMPLICIT_INTENT
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                PendingIntent.FLAG_MUTABLE
-            } else {
-                0
-            };
+            // FLAG_MUTABLE = 0x02000000 (API 31+)
+            // FLAG_ALLOW_UNSAFE_IMPLICIT_INTENT = 0x01000000 (API 34+)
+            val flags = when {
+                Build.VERSION.SDK_INT >= 34 -> {
+                    // Android 14 (UPSIDE_DOWN_CAKE) - API 34
+                    0x02000000 or 0x01000000 // FLAG_MUTABLE | FLAG_ALLOW_UNSAFE_IMPLICIT_INTENT
+                }
+                Build.VERSION.SDK_INT >= 31 -> {
+                    // Android 12 (S) - API 31
+                    0x02000000 // FLAG_MUTABLE
+                }
+                else -> {
+                    0
+                }
+            }
             val mPermissionIntent = PendingIntent.getBroadcast(
                 context, 0,
                 Intent(RemoteClientLibConstants.ACTION_USB_PERMISSION), flags
