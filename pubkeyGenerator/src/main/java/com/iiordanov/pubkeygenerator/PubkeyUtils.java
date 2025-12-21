@@ -1,8 +1,6 @@
 package com.iiordanov.pubkeygenerator;
 
 import com.trilead.ssh2.crypto.PEMDecoder;
-import com.trilead.ssh2.crypto.PrivateKey;
-import com.trilead.ssh2.crypto.PublicKey;
 
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
@@ -15,20 +13,21 @@ public class PubkeyUtils {
     
     /**
      * Wrapper class that provides trilead KeyPair-like interface
-     * with .private and .public properties for Kotlin compatibility
+     * with .private and .public properties for Kotlin compatibility.
+     * The actual key objects are stored as Object to work with trilead's internal types.
      */
     public static class KeyPair {
-        public final PrivateKey privateKey;
-        public final PublicKey publicKey;
+        public final Object privateKey;
+        public final Object publicKey;
         
-        public KeyPair(PrivateKey privateKey, PublicKey publicKey) {
+        public KeyPair(Object privateKey, Object publicKey) {
             this.privateKey = privateKey;
             this.publicKey = publicKey;
         }
         
         // Properties for Kotlin compatibility (kp.private, kp.public)
-        public PrivateKey getPrivate() { return privateKey; }
-        public PublicKey getPublic() { return publicKey; }
+        public Object getPrivate() { return privateKey; }
+        public Object getPublic() { return publicKey; }
     }
     
     /**
@@ -50,14 +49,13 @@ public class PubkeyUtils {
                 : null;
             
             // PEMDecoder.decode returns Object[] with [PrivateKey, PublicKey]
+            // The method signature is: decode(char[] key, char[] passphrase)
             Object result = PEMDecoder.decode(keyChars, passphraseChars);
             
             if (result instanceof Object[]) {
                 Object[] keyPair = (Object[]) result;
-                if (keyPair.length >= 2 
-                    && keyPair[0] instanceof PrivateKey 
-                    && keyPair[1] instanceof PublicKey) {
-                    return new KeyPair((PrivateKey) keyPair[0], (PublicKey) keyPair[1]);
+                if (keyPair.length >= 2) {
+                    return new KeyPair(keyPair[0], keyPair[1]);
                 }
             }
             
