@@ -21,6 +21,21 @@ allprojects {
         mavenCentral()
         maven { url "https://jitpack.io" }
     }
+    
+    configurations.all {
+        resolutionStrategy {
+            // Force AndroidX versions and exclude support library duplicates
+            force 'androidx.core:core:1.6.0'
+            force 'androidx.versionedparcelable:versionedparcelable:1.1.1'
+            
+            // Exclude support library dependencies that conflict with AndroidX
+            exclude group: 'com.android.support', module: 'support-compat'
+            exclude group: 'com.android.support', module: 'versionedparcelable'
+            
+            // Exclude listenablefuture from guava to avoid duplicate class
+            exclude group: 'com.google.guava', module: 'listenablefuture'
+        }
+    }
 }
 
 task clean(type: Delete) {
