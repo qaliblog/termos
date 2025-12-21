@@ -36,7 +36,8 @@ android {
 }
 
 dependencies {
-    implementation (name: "android-database-sqlcipher-4.5.4", ext: "aar")
+    // Use SQLCipher from Maven Central instead of local AAR
+    implementation "net.zetetic:android-database-sqlcipher:4.5.4"
     implementation "androidx.sqlite:sqlite-ktx:2.2.0"
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'
