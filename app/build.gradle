@@ -180,7 +180,10 @@ android {
             useLegacyPackaging true
         }
         resources {
-            excludes += ['META-INF/androidx.localbroadcastmanager_localbroadcastmanager.version']
+            excludes += [
+                'META-INF/androidx.localbroadcastmanager_localbroadcastmanager.version',
+                'META-INF/androidx.appcompat_appcompat.version'
+            ]
         }
     }
 
