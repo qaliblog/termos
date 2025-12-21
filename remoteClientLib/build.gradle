@@ -22,6 +22,12 @@ android {
         java.srcDirs += 'src/main/java'
         java.srcDirs += 'java'
         jniLibs.srcDirs += 'src/main/jniLibs'
+        
+        // Exclude RDP-related files if FreeRDP is not available
+        if (findProject(':remoteClientLib:jni:libs:deps:FreeRDP:client:Android:Studio:freeRDPCore') == null) {
+            java.exclude '**/RdpCommunicator.java'
+            java.exclude '**/RdpKeyboardMapper.java'
+        }
     }
 
     packaging {

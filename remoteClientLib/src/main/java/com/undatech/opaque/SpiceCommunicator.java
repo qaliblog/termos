@@ -167,15 +167,19 @@ public class SpiceCommunicator extends RfbConnectable {
 
     private void registerReceiversForUsbDevices(Context context) {
         if (usbEnabled) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                context.registerReceiver(usbPermissionRequestedReceiver, new IntentFilter(ACTION_USB_PERMISSION), Context.RECEIVER_EXPORTED);
+            // RECEIVER_EXPORTED = 0x00000002 (API 33+)
+            // RECEIVER_NOT_EXPORTED = 0x00000004 (API 33+)
+            if (Build.VERSION.SDK_INT >= 33) {
+                // Android 13 (TIRAMISU) - API 33
+                context.registerReceiver(usbPermissionRequestedReceiver, new IntentFilter(ACTION_USB_PERMISSION), 0x00000002); // RECEIVER_EXPORTED
             } else {
                 context.registerReceiver(usbPermissionRequestedReceiver, new IntentFilter(ACTION_USB_PERMISSION));
             }
             IntentFilter filter = new IntentFilter();
             filter.addAction("android.hardware.usb.action.USB_STATE");
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                context.registerReceiver(usbStateChangedReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+            if (Build.VERSION.SDK_INT >= 33) {
+                // Android 13 (TIRAMISU) - API 33
+                context.registerReceiver(usbStateChangedReceiver, filter, 0x00000004); // RECEIVER_NOT_EXPORTED
             } else {
                 context.registerReceiver(usbStateChangedReceiver, filter);
             }
