@@ -52,18 +52,20 @@ android {
 def freeRdpAvailable = findProject(':remoteClientLib:jni:libs:deps:FreeRDP:client:Android:Studio:freeRDPCore') != null
 if (!freeRdpAvailable) {
     afterEvaluate {
-        // Exclude from Kotlin compilation
+        // Exclude from Kotlin compilation using setSource
         tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
-            source = source.filter { file ->
+            def filteredSource = sourceFiles.filter { file ->
                 !file.path.contains('RemoteRdpConnection.kt')
             }
+            setSource(filteredSource)
         }
-        // Exclude from Java compilation
+        // Exclude from Java compilation using setSource
         tasks.withType(JavaCompile).configureEach {
-            source = source.filter { file ->
+            def filteredSource = source.filter { file ->
                 !file.path.contains('RemoteRdpKeyboard.java') && 
                 !file.path.contains('RemoteRdpPointer.java')
             }
+            setSource(filteredSource)
         }
     }
 }
