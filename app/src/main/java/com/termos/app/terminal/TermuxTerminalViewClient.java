@@ -88,8 +88,12 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
     public void onCreate() {
         onReloadProperties();
 
-        mActivity.getTerminalView().setTextSize(mActivity.getPreferences().getFontSize());
-        mActivity.getTerminalView().setKeepScreenOn(mActivity.getPreferences().shouldKeepScreenOn());
+        // TerminalView may not be ready yet, it will be initialized in onTerminalViewReady()
+        TerminalView terminalView = mActivity.getTerminalView();
+        if (terminalView != null) {
+            terminalView.setTextSize(mActivity.getPreferences().getFontSize());
+            terminalView.setKeepScreenOn(mActivity.getPreferences().shouldKeepScreenOn());
+        }
     }
 
     /**

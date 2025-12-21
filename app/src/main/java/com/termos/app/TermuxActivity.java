@@ -521,6 +521,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             mTerminalView.setTerminalViewClient(mTermuxTerminalViewClient);
             // Register context menu if not already registered
             registerForContextMenu(mTerminalView);
+            
+            // Apply settings that may have been set before TerminalView was ready
+            if (mPreferences != null) {
+                mTerminalView.setTextSize(mPreferences.getFontSize());
+                mTerminalView.setKeepScreenOn(mPreferences.shouldKeepScreenOn());
+            }
         }
     }
     
