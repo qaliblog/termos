@@ -54,8 +54,9 @@ public class LinuxCommandExecutor {
         
         try {
             // Create execution command for background execution
+            // Use -1 as id since this command is not managed by shell manager
             ExecutionCommand executionCommand = new ExecutionCommand(
-                "linux-cmd-" + System.currentTimeMillis(),
+                -1, // id
                 "/bin/sh",
                 new String[]{"-c", command},
                 null, // stdin
@@ -71,7 +72,7 @@ public class LinuxCommandExecutor {
             AppShell.AppShellClient appShellClient = new AppShell.AppShellClient() {
                 @Override
                 public void onAppShellExited(AppShell appShell) {
-                    if (appShell == null || appShell.mExecutionCommand == null) {
+                    if (appShell == null) {
                         if (callback != null) {
                             callback.onError("Command execution failed");
                         }
@@ -79,6 +80,12 @@ public class LinuxCommandExecutor {
                     }
                     
                     ExecutionCommand cmd = appShell.getExecutionCommand();
+                    if (cmd == null) {
+                        if (callback != null) {
+                            callback.onError("Command execution failed");
+                        }
+                        return;
+                    }
                     int exitCode = cmd.resultData.exitCode;
                     String stdout = cmd.resultData.stdout.toString();
                     String stderr = cmd.resultData.stderr.toString();

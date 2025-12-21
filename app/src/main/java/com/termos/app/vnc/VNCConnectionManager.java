@@ -219,7 +219,7 @@ public class VNCConnectionManager {
         
         if (remoteConnection != null) {
             try {
-                remoteConnection.disconnect();
+                remoteConnection.closeConnection();
             } catch (Exception e) {
                 Log.e(TAG, "Error disconnecting", e);
             }
