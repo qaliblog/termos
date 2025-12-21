@@ -44,13 +44,15 @@ android {
     namespace 'com.undatech.remoteClientUi'
 }
 
-// Conditionally exclude RemoteRdpConnection.kt from Kotlin compilation
+// Conditionally exclude RemoteRdpConnection.kt from Kotlin compilation when FreeRDP is not available
 def freeRdpAvailable = findProject(':remoteClientLib:jni:libs:deps:FreeRDP:client:Android:Studio:freeRDPCore') != null
 if (!freeRdpAvailable) {
     afterEvaluate {
         tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
-            exclude '**/protocol/RemoteRdpConnection.kt'
-            exclude '**/RemoteRdpConnection.kt'
+            // Filter out RemoteRdpConnection.kt from source files
+            source = source.filter { file ->
+                !file.path.contains('RemoteRdpConnection.kt')
+            }
         }
     }
 }
