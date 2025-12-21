@@ -116,8 +116,16 @@ android {
                 ? project.property('RELEASE_STORE_FILE') 
                 : System.getenv('RELEASE_STORE_FILE')
             
-            if (keystoreFile != null && new File(keystoreFile).exists()) {
-                storeFile file(keystoreFile)
+            def keystorePath = null
+            if (keystoreFile != null) {
+                def keystore = new File(keystoreFile)
+                if (keystore.exists()) {
+                    keystorePath = keystoreFile
+                }
+            }
+            
+            if (keystorePath != null) {
+                storeFile file(keystorePath)
                 storePassword project.hasProperty('RELEASE_STORE_PASSWORD') 
                     ? project.property('RELEASE_STORE_PASSWORD') 
                     : System.getenv('RELEASE_STORE_PASSWORD')
