@@ -60,10 +60,10 @@ if (!freeRdpAvailable) {
         }
         // Exclude from Java compilation
         tasks.withType(JavaCompile).configureEach {
-            exclude '**/RemoteRdpKeyboard.java'
-            exclude '**/RemoteRdpPointer.java'
-            exclude '**/input/RemoteRdpKeyboard.java'
-            exclude '**/input/RemoteRdpPointer.java'
+            source = source.filter { file ->
+                !file.path.contains('RemoteRdpKeyboard.java') && 
+                !file.path.contains('RemoteRdpPointer.java')
+            }
         }
     }
 }
