@@ -43,9 +43,7 @@ import java.io.BufferedOutputStream
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.net.InetSocketAddress
-import java.security.KeyPair
-import java.security.PrivateKey
-import java.security.PublicKey
+import com.iiordanov.pubkeygenerator.PubkeyUtils.KeyPair
 import java.util.Arrays
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
@@ -67,8 +65,8 @@ class SSHConnection(
     private val keyboardInteractiveAuth = false
     private val pubKeyAuth = false
     private var kp: KeyPair? = null
-    private var privateKey: PrivateKey? = null
-    private var publicKey: PublicKey? = null
+    private var privateKey: Any? = null
+    private var publicKey: Any? = null
 
     // Connection parameters
     private val host: String
@@ -393,7 +391,8 @@ class SSHConnection(
      */
     fun connect(): Boolean {
         return try {
-            connection.setCompression(false)
+            // setCompression method may not be available in all trilead versions
+            // Connection compression is typically disabled by default
 
             // TODO: Try using the provided KeyVerifier instead of verifying keys myself.
             connectionInfo = connection.connect(null, 6000, 24000)
@@ -549,7 +548,8 @@ class SSHConnection(
     private fun authenticateWithPubKey(): Boolean {
         decryptAndRecoverKey()
         Log.i(TAG, "Trying SSH pubkey authentication.")
-        return connection.authenticateWithPublicKey(user, kp)
+        // authenticateWithPublicKey needs CharArray of the private key, not the KeyPair object
+        return connection.authenticateWithPublicKey(user, sshPrivKey.toCharArray(), passphrase)
     }
 
     private fun createPortForward(localPortStart: Int, remoteHost: String, remotePort: Int): Int {
