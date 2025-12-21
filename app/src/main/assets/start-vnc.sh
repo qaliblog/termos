@@ -28,7 +28,7 @@ fi
 if [ ! -f "$VNC_XSTARTUP" ]; then
     cat > "$VNC_XSTARTUP" << 'EOF'
 #!/bin/sh
-# XFCE4 startup script for VNC
+# Lomiri (Ubuntu Touch) startup script for VNC - Touch-based, no mouse hover
 
 # Start D-Bus if not running
 if [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then
@@ -36,14 +36,22 @@ if [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then
     export DBUS_SESSION_BUS_ADDRESS
 fi
 
-# Start XFCE4 desktop
-if command -v startxfce4 >/dev/null 2>&1; then
-    exec startxfce4
-elif command -v xfce4-session >/dev/null 2>&1; then
-    exec xfce4-session
+# Set environment for touch-based interaction
+export QT_QUICK_CONTROLS_MOBILE=true
+export QT_QUICK_CONTROLS_STYLE=Suru
+export MIR_SERVER_ENABLE_MIR_CLIENT=1
+
+# Disable mouse hover effects
+export QT_X11_NO_MITSHM=1
+
+# Start Lomiri session
+if command -v lomiri-session >/dev/null 2>&1; then
+    exec lomiri-session
+elif command -v unity8-session >/dev/null 2>&1; then
+    exec unity8-session
 else
-    # Fallback: start basic X session
-    exec xterm
+    # Fallback: start basic X session with touch-friendly terminal
+    exec xterm -fa "DejaVu Sans Mono" -fs 14
 fi
 EOF
     chmod +x "$VNC_XSTARTUP"

@@ -132,20 +132,30 @@ class RemoteClientsInputListener(
     }
 
     // Send e.g. mouse events like hover and scroll to be handled.
+    // For touch-based Lomiri: completely disable all hover events
     fun onGenericMotionEvent(event: MotionEvent): Boolean {
         GeneralUtils.debugLog(App.debugLog, tag, "onGenericMotionEvent, event: $event")
+        
+        val a = event.action
+        // Completely disable all hover events for touch-based interaction
+        val isHoverEnter = a == MotionEvent.ACTION_HOVER_ENTER
+        val isHoverExit = a == MotionEvent.ACTION_HOVER_EXIT
+        val isHoverMove = a == MotionEvent.ACTION_HOVER_MOVE
+        
+        // Reject all hover events - touch-based only, no mouse hover
+        if (isHoverEnter || isHoverExit || isHoverMove) {
+            return false
+        }
+        
         // Ignore TOOL_TYPE_FINGER events that come from the touchscreen with HOVER type action
         // which cause pointer jumping trouble in simulated touchpad for some devices.
         var toolTypeFinger = false
         if (Constants.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
             toolTypeFinger = event.getToolType(0) == MotionEvent.TOOL_TYPE_FINGER
         }
-        val a = event.action
-        val isHoverEnter = a == MotionEvent.ACTION_HOVER_ENTER
-        val isHoverExit = a == MotionEvent.ACTION_HOVER_EXIT
         val isHoverEventFromFingerOnTouchscreen =
             (a == MotionEvent.ACTION_HOVER_MOVE && event.source == InputDevice.SOURCE_TOUCHSCREEN && toolTypeFinger)
-        if (!(isHoverEnter || isHoverExit || isHoverEventFromFingerOnTouchscreen)) {
+        if (!isHoverEventFromFingerOnTouchscreen) {
             return this.touchInputHandler?.onTouchEvent(event) ?: false
         }
         return false
