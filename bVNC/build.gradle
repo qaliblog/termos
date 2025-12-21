@@ -33,7 +33,10 @@ android {
 dependencies {
     implementation project(':pubkeyGenerator')
     implementation project(':remoteClientLib')
-    implementation project(':remoteClientLib:jni:libs:deps:FreeRDP:client:Android:Studio:freeRDPCore')
+    // freeRDPCore is conditionally included in settings.gradle if it exists
+    if (findProject(':remoteClientLib:jni:libs:deps:FreeRDP:client:Android:Studio:freeRDPCore') != null) {
+        implementation project(':remoteClientLib:jni:libs:deps:FreeRDP:client:Android:Studio:freeRDPCore')
+    }
     implementation group: 'org.bouncycastle', name: 'bctls-jdk18on', version: '1.80'
     implementation group: 'androidx.appcompat', name: 'appcompat', version: '1.4.1'
     implementation group: 'androidx.legacy', name: 'legacy-support-v4', version: '1.0.0'
