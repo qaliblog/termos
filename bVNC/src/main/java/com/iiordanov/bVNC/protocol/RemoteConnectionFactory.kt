@@ -38,7 +38,19 @@ class RemoteConnectionFactory(
             remoteConnection =
                 RemoteSpiceConnection(context, connection, viewable, hideKeyboardAndExtraKeys)
         } else if (isRdp) {
-            remoteConnection = RemoteRdpConnection(context, connection, viewable, hideKeyboardAndExtraKeys)
+            // Use reflection to instantiate RemoteRdpConnection if available (FreeRDP dependency)
+            try {
+                val rdpClass = Class.forName("com.iiordanov.bVNC.protocol.RemoteRdpConnection")
+                val constructor = rdpClass.getConstructor(
+                    Context::class.java,
+                    Connection::class.java,
+                    Viewable::class.java,
+                    Runnable::class.java
+                )
+                remoteConnection = constructor.newInstance(context, connection, viewable, hideKeyboardAndExtraKeys) as RemoteConnection
+            } catch (e: ClassNotFoundException) {
+                throw IllegalStateException("RDP support requires FreeRDP dependency. RemoteRdpConnection class not found.", e)
+            }
         } else if (isVnc) {
             remoteConnection = RemoteVncConnection(context, connection, viewable, hideKeyboardAndExtraKeys)
         } else if (isOpaque) {
