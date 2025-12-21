@@ -184,7 +184,8 @@ android {
                 'META-INF/androidx.localbroadcastmanager_localbroadcastmanager.version',
                 'META-INF/androidx.appcompat_appcompat.version',
                 'META-INF/androidx.swiperefreshlayout_swiperefreshlayout.version',
-                'META-INF/androidx.print_print.version'
+                'META-INF/androidx.print_print.version',
+                'META-INF/versions/9/OSGI-INF/MANIFEST.MF'
             ]
         }
     }
