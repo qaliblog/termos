@@ -14,7 +14,7 @@ import android.content.res.Resources;
 import android.net.Uri;
 import android.util.Log;
 
-import android.support.annotation.NonNull;
+import androidx.annotation.NonNull;
 
 import com.undatech.opaque.RemoteClientLibConstants;
 
