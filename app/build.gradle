@@ -13,6 +13,7 @@ ext {
 }
 
 android {
+    namespace "com.termos"
     compileSdkVersion project.properties.compileSdkVersion.toInteger()
     ndkVersion = System.getenv("JITPACK_NDK_VERSION") ?: "25.1.8937393"
     
