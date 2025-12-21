@@ -39,20 +39,17 @@ task sourceJar(type: Jar) {
 }
 
 afterEvaluate {
-    publishing {
-        publications {
-            // Creates a Maven publication called "release".
-            release(MavenPublication) {
-                groupId = 'com.termux'
-                artifactId = 'terminal-view'
-                version = '0.118.0'
-                // Only add component if it exists (for publishing)
-                try {
+    if (components.findByName('release') != null) {
+        publishing {
+            publications {
+                // Creates a Maven publication called "release".
+                release(MavenPublication) {
                     from components.release
-                } catch (Exception e) {
-                    // Component not available, skip for now
+                    groupId = 'com.termux'
+                    artifactId = 'terminal-view'
+                    version = '0.118.0'
+                    artifact(sourceJar)
                 }
-                artifact(sourceJar)
             }
         }
     }
