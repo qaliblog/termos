@@ -179,6 +179,9 @@ android {
         jniLibs {
             useLegacyPackaging true
         }
+        resources {
+            excludes += ['META-INF/androidx.localbroadcastmanager_localbroadcastmanager.version']
+        }
     }
 
     applicationVariants.all { variant ->
