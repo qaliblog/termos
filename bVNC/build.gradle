@@ -38,21 +38,32 @@ android {
         if (!freeRdpAvailable) {
             java.exclude '**/protocol/RemoteRdpConnection.kt'
             java.exclude '**/RemoteRdpConnection.kt'
+            java.exclude '**/input/RemoteRdpKeyboard.java'
+            java.exclude '**/RemoteRdpKeyboard.java'
+            java.exclude '**/input/RemoteRdpPointer.java'
+            java.exclude '**/RemoteRdpPointer.java'
         }
     }
     
     namespace 'com.undatech.remoteClientUi'
 }
 
-// Conditionally exclude RemoteRdpConnection.kt from Kotlin compilation when FreeRDP is not available
+// Conditionally exclude RDP-related files from compilation when FreeRDP is not available
 def freeRdpAvailable = findProject(':remoteClientLib:jni:libs:deps:FreeRDP:client:Android:Studio:freeRDPCore') != null
 if (!freeRdpAvailable) {
     afterEvaluate {
+        // Exclude from Kotlin compilation
         tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
-            // Filter out RemoteRdpConnection.kt from source files
             source = source.filter { file ->
                 !file.path.contains('RemoteRdpConnection.kt')
             }
+        }
+        // Exclude from Java compilation
+        tasks.withType(JavaCompile).configureEach {
+            exclude '**/RemoteRdpKeyboard.java'
+            exclude '**/RemoteRdpPointer.java'
+            exclude '**/input/RemoteRdpKeyboard.java'
+            exclude '**/input/RemoteRdpPointer.java'
         }
     }
 }
