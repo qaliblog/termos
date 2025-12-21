@@ -10,7 +10,7 @@ buildscript {
 }
 
 ext {
-    compileApi = project.properties.compileSdkVersion?.toInteger() ?: 30
+    compileApi = project.properties.compileSdkVersion?.toInteger() ?: 31
     targetApi = project.properties.targetSdkVersion?.toInteger() ?: 28
     kotlin_version = '1.9.22'
 }
