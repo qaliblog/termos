@@ -43,14 +43,13 @@ public class PubkeyUtils {
         }
         
         try {
-            char[] keyChars = sshPrivKey.toCharArray();
-            char[] passphraseChars = (passphrase != null && !passphrase.isEmpty()) 
-                ? passphrase.toCharArray() 
+            String passphraseStr = (passphrase != null && !passphrase.isEmpty()) 
+                ? passphrase 
                 : null;
             
             // PEMDecoder.decode returns Object[] with [PrivateKey, PublicKey]
-            // The method signature is: decode(char[] key, char[] passphrase)
-            Object result = PEMDecoder.decode(keyChars, passphraseChars);
+            // The method signature is: decode(String key, String passphrase)
+            Object result = PEMDecoder.decode(sshPrivKey, passphraseStr);
             
             if (result instanceof Object[]) {
                 Object[] keyPair = (Object[]) result;
