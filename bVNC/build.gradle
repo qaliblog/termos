@@ -51,22 +51,19 @@ android {
 // Conditionally exclude RDP-related files from compilation when FreeRDP is not available
 def freeRdpAvailable = findProject(':remoteClientLib:jni:libs:deps:FreeRDP:client:Android:Studio:freeRDPCore') != null
 if (!freeRdpAvailable) {
-    afterEvaluate {
-        // Exclude from Kotlin compilation using setSource
-        tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
-            def filteredSource = sourceFiles.filter { file ->
-                !file.path.contains('RemoteRdpConnection.kt')
-            }
-            setSource(filteredSource)
+    // Create a task to delete RDP files before compilation
+    task deleteRdpFiles(type: Delete) {
+        delete fileTree('src/main/java') {
+            include '**/RemoteRdpConnection.kt'
+            include '**/RemoteRdpKeyboard.java'
+            include '**/RemoteRdpPointer.java'
         }
-        // Exclude from Java compilation using setSource
-        tasks.withType(JavaCompile).configureEach {
-            def sourceFiles = sourceSets.main.allJava.files
-            def filteredSource = sourceFiles.filter { file ->
-                !file.path.contains('RemoteRdpKeyboard.java') && 
-                !file.path.contains('RemoteRdpPointer.java')
-            }
-            setSource(filteredSource)
+    }
+    
+    // Make compilation tasks depend on the delete task
+    afterEvaluate {
+        tasks.matching { it.name.contains('compile') && (it.name.contains('Kotlin') || it.name.contains('Java')) }.configureEach {
+            dependsOn deleteRdpFiles
         }
     }
 }
