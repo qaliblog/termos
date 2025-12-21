@@ -111,37 +111,35 @@ android {
         }
         
         release {
-            // Use environment variables or project properties for CI/CD
+            // Default to debug keystore (always valid)
+            storeFile file('testkey_untrusted.jks')
+            keyAlias 'alias'
+            storePassword 'xrj45yWGLbsO7W0v'
+            keyPassword 'xrj45yWGLbsO7W0v'
+            
+            // Override with release keystore if provided and exists
             def keystoreFile = project.hasProperty('RELEASE_STORE_FILE') 
                 ? project.property('RELEASE_STORE_FILE') 
                 : System.getenv('RELEASE_STORE_FILE')
             
-            def keystorePath = null
             if (keystoreFile != null) {
                 def keystore = new File(keystoreFile)
                 if (keystore.exists()) {
-                    keystorePath = keystoreFile
+                    storeFile file(keystoreFile)
+                    def releaseStorePassword = project.hasProperty('RELEASE_STORE_PASSWORD') 
+                        ? project.property('RELEASE_STORE_PASSWORD') 
+                        : System.getenv('RELEASE_STORE_PASSWORD')
+                    def releaseKeyAlias = project.hasProperty('RELEASE_KEY_ALIAS') 
+                        ? project.property('RELEASE_KEY_ALIAS') 
+                        : System.getenv('RELEASE_KEY_ALIAS')
+                    def releaseKeyPassword = project.hasProperty('RELEASE_KEY_PASSWORD') 
+                        ? project.property('RELEASE_KEY_PASSWORD') 
+                        : System.getenv('RELEASE_KEY_PASSWORD')
+                    
+                    if (releaseStorePassword != null) storePassword = releaseStorePassword
+                    if (releaseKeyAlias != null) keyAlias = releaseKeyAlias
+                    if (releaseKeyPassword != null) keyPassword = releaseKeyPassword
                 }
-            }
-            
-            if (keystorePath != null) {
-                storeFile file(keystorePath)
-                storePassword project.hasProperty('RELEASE_STORE_PASSWORD') 
-                    ? project.property('RELEASE_STORE_PASSWORD') 
-                    : System.getenv('RELEASE_STORE_PASSWORD')
-                keyAlias project.hasProperty('RELEASE_KEY_ALIAS') 
-                    ? project.property('RELEASE_KEY_ALIAS') 
-                    : System.getenv('RELEASE_KEY_ALIAS')
-                keyPassword project.hasProperty('RELEASE_KEY_PASSWORD') 
-                    ? project.property('RELEASE_KEY_PASSWORD') 
-                    : System.getenv('RELEASE_KEY_PASSWORD')
-            } else {
-                // Fallback: use debug keystore if release keystore not found
-                // This allows local builds without release keystore
-                storeFile file('testkey_untrusted.jks')
-                keyAlias 'alias'
-                storePassword 'xrj45yWGLbsO7W0v'
-                keyPassword 'xrj45yWGLbsO7W0v'
             }
         }
     }
