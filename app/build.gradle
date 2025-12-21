@@ -182,7 +182,8 @@ android {
         resources {
             excludes += [
                 'META-INF/androidx.localbroadcastmanager_localbroadcastmanager.version',
-                'META-INF/androidx.appcompat_appcompat.version'
+                'META-INF/androidx.appcompat_appcompat.version',
+                'META-INF/androidx.swiperefreshlayout_swiperefreshlayout.version'
             ]
         }
     }
