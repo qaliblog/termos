@@ -185,6 +185,7 @@ android {
                 'META-INF/androidx.appcompat_appcompat.version',
                 'META-INF/androidx.swiperefreshlayout_swiperefreshlayout.version',
                 'META-INF/androidx.print_print.version',
+                'META-INF/androidx.customview_customview.version',
                 'META-INF/versions/9/OSGI-INF/MANIFEST.MF'
             ]
         }
