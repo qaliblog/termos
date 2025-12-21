@@ -43,6 +43,7 @@ import com.termux.shared.view.ViewUtils;
 import com.termux.terminal.KeyHandler;
 import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
+import com.termux.view.TerminalView;
 
 import java.util.ArrayList;
 import java.util.Arrays;
