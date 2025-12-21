@@ -61,7 +61,8 @@ if (!freeRdpAvailable) {
         }
         // Exclude from Java compilation using setSource
         tasks.withType(JavaCompile).configureEach {
-            def filteredSource = source.filter { file ->
+            def sourceFiles = sourceSets.main.allJava.files
+            def filteredSource = sourceFiles.filter { file ->
                 !file.path.contains('RemoteRdpKeyboard.java') && 
                 !file.path.contains('RemoteRdpPointer.java')
             }
