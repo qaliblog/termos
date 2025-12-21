@@ -2,4 +2,4 @@ include ':app', ':termux-shared', ':terminal-emulator', ':terminal-view'
 
 // Include remote-desktop-clients modules for VNC support
 // These modules are now copied into the termos folder
-include ':remoteClientLib', ':common', ':bVNC'
+include ':remoteClientLib', ':common', ':bVNC', ':pubkeyGenerator'
