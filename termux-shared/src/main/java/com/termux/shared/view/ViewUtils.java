@@ -8,8 +8,10 @@ import android.graphics.Point;
 import android.graphics.Rect;
 import android.os.Build;
 import android.util.TypedValue;
+import android.view.Display;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -183,15 +185,75 @@ public class ViewUtils {
      * @return Returns the display size as {@link Point}.
      */
     public static Point getDisplaySize( @NonNull Context context, boolean activitySize) {
-        // android.view.WindowManager.getDefaultDisplay() and Display.getSize() are deprecated in
-        // API 30 and give wrong values in API 30 for activitySize=false in multi-window
-        androidx.window.WindowManager windowManager = new androidx.window.WindowManager(context);
-        androidx.window.WindowMetrics windowMetrics;
-        if (activitySize)
-            windowMetrics = windowManager.getCurrentWindowMetrics();
-        else
-            windowMetrics = windowManager.getMaximumWindowMetrics();
-        return new Point(windowMetrics.getBounds().width(), windowMetrics.getBounds().height());
+        // Try to use androidx.window.WindowManager if available (API 30+)
+        // Fall back to deprecated methods if androidx.window is not available
+        try {
+            // Use reflection to check if androidx.window.WindowManager is available
+            Class<?> windowManagerClass = Class.forName("androidx.window.WindowManager");
+            Object windowManager = windowManagerClass.getConstructor(Context.class).newInstance(context);
+            
+            Class<?> windowMetricsClass = Class.forName("androidx.window.WindowMetrics");
+            Object windowMetrics;
+            
+            if (activitySize) {
+                java.lang.reflect.Method getCurrentWindowMetrics = windowManagerClass.getMethod("getCurrentWindowMetrics");
+                windowMetrics = getCurrentWindowMetrics.invoke(windowManager);
+            } else {
+                java.lang.reflect.Method getMaximumWindowMetrics = windowManagerClass.getMethod("getMaximumWindowMetrics");
+                windowMetrics = getMaximumWindowMetrics.invoke(windowManager);
+            }
+            
+            java.lang.reflect.Method getBounds = windowMetricsClass.getMethod("getBounds");
+            Rect bounds = (Rect) getBounds.invoke(windowMetrics);
+            return new Point(bounds.width(), bounds.height());
+        } catch (Exception e) {
+            // Fallback to deprecated methods if androidx.window is not available
+            // This can happen if the library is not included or ProGuard/R8 stripped it
+            Logger.logVerbose(LOG_TAG, "androidx.window.WindowManager not available, using fallback: " + e.getMessage());
+            
+            Activity activity = getActivity(context);
+            if (activity == null) {
+                // If we can't get Activity, try to get WindowManager from context
+                WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+                if (wm != null) {
+                    Display display = wm.getDefaultDisplay();
+                    Point size = new Point();
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+                        display.getRealSize(size);
+                    } else {
+                        display.getSize(size);
+                    }
+                    return size;
+                }
+                // Last resort: return a default size
+                return new Point(1080, 1920);
+            }
+            
+            WindowManager wm = activity.getWindowManager();
+            Display display = wm.getDefaultDisplay();
+            Point size = new Point();
+            
+            if (activitySize) {
+                // For activity size, use getSize() which gives the app window size
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+                    display.getSize(size);
+                } else {
+                    size.x = display.getWidth();
+                    size.y = display.getHeight();
+                }
+            } else {
+                // For maximum display size, use getRealSize() which gives the physical display size
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+                    display.getRealSize(size);
+                } else {
+                    // Fallback for very old Android versions
+                    size.x = display.getWidth();
+                    size.y = display.getHeight();
+                }
+            }
+            
+            return size;
+        }
     }
 
     /** Convert {@link Rect} to {@link String}. */

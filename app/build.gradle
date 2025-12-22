@@ -40,6 +40,11 @@ android {
         implementation "io.noties.markwon:linkify:$markwonVersion"
         implementation "io.noties.markwon:recycler:$markwonVersion"
 
+        // androidx.window is required by termux-shared ViewUtils
+        // Do not increment version higher than 1.0.0-alpha09 since it will break ViewUtils
+        // noinspection GradleDependency
+        implementation "androidx.window:window:1.0.0-alpha09"
+
         implementation project(":terminal-view")
         implementation project(":termux-shared")
         implementation project(":bVNC")
