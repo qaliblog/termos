@@ -28,7 +28,49 @@ import com.iiordanov.bVNC.protocol.RemoteConnection;
 public class VNCConnectionManager {
     private static final String TAG = "VNCConnectionManager";
     private static final String VNC_HOST = "127.0.0.1";
-    private static final int VNC_PORT = 5902; // Display :2 (using :2 because :1 socket gets stuck)
+    private static final int DEFAULT_VNC_PORT = 5901; // Default port (display :1)
+    private static final String VNC_DISPLAY_FILE = "/tmp/vnc-display.txt"; // File storing current display and port
+    
+    /**
+     * Read the current VNC port from the saved file.
+     * Returns default port if file doesn't exist or can't be read.
+     */
+    private int getVNCPort() {
+        // Try to read from file first
+        if (serviceClient != null) {
+            try {
+                // Read the file via command executor
+                commandExecutor.executeCommand("cat " + VNC_DISPLAY_FILE + " 2>/dev/null | grep -o 'port:[0-9]*' | cut -d: -f2", 
+                    serviceClient, 
+                    new LinuxCommandExecutor.CommandCallback() {
+                        @Override
+                        public void onSuccess(String output) {
+                            if (output != null && !output.trim().isEmpty()) {
+                                try {
+                                    int port = Integer.parseInt(output.trim());
+                                    if (port >= 5900 && port <= 5999) {
+                                        Log.d(TAG, "Read VNC port from file: " + port);
+                                        // Store in a field for later use
+                                        // Note: This is async, so we'll need to handle it differently
+                                    }
+                                } catch (NumberFormatException e) {
+                                    Log.w(TAG, "Invalid port in file: " + output);
+                                }
+                            }
+                        }
+                        
+                        @Override
+                        public void onError(String error) {
+                            Log.d(TAG, "Could not read VNC port file, using default: " + DEFAULT_VNC_PORT);
+                        }
+                    });
+            } catch (Exception e) {
+                Log.w(TAG, "Error reading VNC port file", e);
+            }
+        }
+        // For now, return default. We'll need to make connection async or cache the value.
+        return DEFAULT_VNC_PORT;
+    }
     
     private static VNCConnectionManager instance;
     private Context context;
@@ -87,7 +129,8 @@ public class VNCConnectionManager {
         // Use activity context for ConnectionBean as it may need Activity context
         connection = new ConnectionBean(activityContext);
         connection.setAddress(VNC_HOST);
-        connection.setPort(VNC_PORT);
+        // Port will be set dynamically when connecting
+        connection.setPort(DEFAULT_VNC_PORT);
         connection.setNickname("Termos OS");
         connection.setConnectionType(Constants.CONN_TYPE_PLAIN);
         connection.setColorModel(com.iiordanov.bVNC.COLORMODEL.C24bit.nameString());
@@ -216,8 +259,67 @@ public class VNCConnectionManager {
             }
         }, CONNECTION_TIMEOUT_MS);
         
-        Log.d(TAG, "Connecting to VNC server at " + VNC_HOST + ":" + VNC_PORT);
+        // Read VNC port from file before connecting
+        readAndSetVNCPort(() -> {
+            Log.d(TAG, "Connecting to VNC server at " + VNC_HOST + ":" + connection.getPort());
+            doConnectAfterPortSet();
+        });
+    }
+    
+    /**
+     * Read VNC port from file and set it on the connection, then proceed with connection.
+     */
+    private void readAndSetVNCPort(Runnable onComplete) {
+        if (serviceClient == null) {
+            Log.w(TAG, "No service client, using default port");
+            connection.setPort(DEFAULT_VNC_PORT);
+            if (onComplete != null) onComplete.run();
+            return;
+        }
         
+        commandExecutor.executeCommand(
+            "if [ -f " + VNC_DISPLAY_FILE + " ]; then " +
+            "  grep -o 'port:[0-9]*' " + VNC_DISPLAY_FILE + " | cut -d: -f2; " +
+            "else " +
+            "  echo '" + DEFAULT_VNC_PORT + "'; " +
+            "fi",
+            serviceClient,
+            new LinuxCommandExecutor.CommandCallback() {
+                @Override
+                public void onSuccess(String output) {
+                    int port = DEFAULT_VNC_PORT;
+                    if (output != null && !output.trim().isEmpty()) {
+                        try {
+                            port = Integer.parseInt(output.trim());
+                            if (port < 5900 || port > 5999) {
+                                port = DEFAULT_VNC_PORT;
+                            }
+                        } catch (NumberFormatException e) {
+                            Log.w(TAG, "Invalid port in file: " + output);
+                        }
+                    }
+                    connection.setPort(port);
+                    Log.d(TAG, "Using VNC port: " + port);
+                    if (onComplete != null) {
+                        onComplete.run();
+                    }
+                }
+                
+                @Override
+                public void onError(String error) {
+                    Log.w(TAG, "Could not read VNC port file, using default: " + DEFAULT_VNC_PORT);
+                    connection.setPort(DEFAULT_VNC_PORT);
+                    if (onComplete != null) {
+                        onComplete.run();
+                    }
+                }
+            });
+    }
+    
+    /**
+     * Continue with connection after port is set.
+     */
+    private void doConnectAfterPortSet() {
         // Auto-start VNC server if not running
         if (serviceClient != null) {
             Log.d(TAG, "Starting VNC server check and startup...");

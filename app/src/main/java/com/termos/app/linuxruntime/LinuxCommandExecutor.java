@@ -131,21 +131,30 @@ public class LinuxCommandExecutor {
                                       ServerCheckCallback callback) {
         // Try multiple methods to check if VNC is running
         // Check port, processes, or if VNC log files exist
-        executeCommand("(ss -ln 2>/dev/null | grep ':5902 ') || " +
-            "(netstat -ln 2>/dev/null | grep ':5902 ') || " +
-            "(test -f /tmp/vncserver.log && echo 'vncserver_log_exists') || " +
-            "(test -f /tmp/xvnc.log && echo 'xvnc_log_exists') || " +
-            "(test -f /tmp/x11vnc.log && echo 'x11vnc_log_exists') || " +
-            "(pgrep -f '[X]vnc' >/dev/null 2>&1 && echo 'xvnc_process') || " +
-            "(pgrep -f '[v]ncserver' >/dev/null 2>&1 && echo 'vncserver_process') || " +
-            "(pgrep -f '[x]11vnc' >/dev/null 2>&1 && echo 'x11vnc_process') || " +
-            "echo 'not_found'", 
+        // First try to read port from saved file, then check if it's listening
+        executeCommand("PORT=$(cat /tmp/vnc-display.txt 2>/dev/null | grep '^port:' | cut -d: -f2); " +
+            "if [ -n \"$PORT\" ]; then " +
+            "  (ss -ln 2>/dev/null | grep \":$PORT \") || " +
+            "  (netstat -ln 2>/dev/null | grep \":$PORT \") || " +
+            "  (pgrep -f '[X]vnc.*:$PORT' >/dev/null 2>&1 && echo 'xvnc_process') || " +
+            "  echo 'not_found'; " +
+            "else " +
+            "  (ss -ln 2>/dev/null | grep ':590[0-9] ') || " +
+            "  (netstat -ln 2>/dev/null | grep ':590[0-9] ') || " +
+            "  (test -f /tmp/vncserver.log && echo 'vncserver_log_exists') || " +
+            "  (test -f /tmp/xvnc*.log && echo 'xvnc_log_exists') || " +
+            "  (test -f /tmp/x11vnc.log && echo 'x11vnc_log_exists') || " +
+            "  (pgrep -f '[X]vnc' >/dev/null 2>&1 && echo 'xvnc_process') || " +
+            "  (pgrep -f '[v]ncserver' >/dev/null 2>&1 && echo 'vncserver_process') || " +
+            "  (pgrep -f '[x]11vnc' >/dev/null 2>&1 && echo 'x11vnc_process') || " +
+            "  echo 'not_found'; " +
+            "fi", 
             serviceClient,
             new CommandCallback() {
                 @Override
                 public void onSuccess(String output) {
                     boolean isRunning = output != null && 
-                        (output.contains("5902") || 
+                        (output.contains("590") || 
                          output.contains("vncserver") || 
                          output.contains("xvnc") || 
                          output.contains("x11vnc") ||

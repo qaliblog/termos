@@ -607,7 +607,7 @@ public class InstallOSActivity extends AppCompatActivity {
                 "    sleep 2\n" +
                 "fi\n" +
                 "\n" +
-                "echo 'VNC server started on display :1, port 5901 (Lomiri)'\n" +
+                "echo 'VNC server started on display :2, port 5902 (Lomiri)'\n" +
                 "STARTEOF\n" +
                 "else\n" +
                 "    cat > /usr/local/bin/start-vnc.sh << 'STARTEOF'\n" +
@@ -630,99 +630,91 @@ public class InstallOSActivity extends AppCompatActivity {
                 "    echo '127.0.0.1 localhost' >> /etc/hosts 2>/dev/null || true\n" +
                 "fi\n" +
                 "\n" +
-                "# Kill existing VNC server if running\n" +
-                "pkill -f 'vncserver :1' 2>/dev/null || true\n" +
-                "pkill -f 'Xvnc :1' 2>/dev/null || true\n" +
-                "pkill -f 'x11vnc.*:1' 2>/dev/null || true\n" +
+                "# Kill existing VNC servers\n" +
+                "pkill -f 'vncserver' 2>/dev/null || true\n" +
+                "pkill -f 'Xvnc' 2>/dev/null || true\n" +
+                "pkill -f 'x11vnc' 2>/dev/null || true\n" +
                 "sleep 2\n" +
                 "\n" +
-                "# Start VNC server - prefer Xvnc directly (avoids hostname issues)\n" +
-                "if command -v Xvnc >/dev/null 2>&1; then\n" +
-                "    # Use Xvnc directly (doesn't require hostname)\n" +
-                "    # Xvnc automatically uses ~/.vnc/xstartup when starting a display\n" +
-                "    echo 'Starting VNC server with Xvnc...'\n" +
-                "    Xvnc :2 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5902 >/tmp/xvnc.log 2>&1 &\n" +
-                "    XVNC_PID=$!\n" +
-                "    sleep 5\n" +
-                "    # Check if Xvnc is still running\n" +
-                "    if kill -0 $XVNC_PID 2>/dev/null; then\n" +
-                "        echo 'VNC server started (Xvnc)'\n" +
-                "    else\n" +
-                "        echo 'Xvnc failed, checking logs...'\n" +
-                "        cat /tmp/xvnc.log 2>/dev/null || true\n" +
-                "        # Fall back to vncserver or x11vnc\n" +
-                "        if command -v vncserver >/dev/null 2>&1; then\n" +
-                "            echo 'Trying vncserver as fallback...'\n" +
-                "            vncserver :2 -geometry 1280x720 -depth 24 -localhost no -SecurityTypes None -xstartup /root/.vnc/xstartup >/tmp/vncserver.log 2>&1 || true\n" +
+                "# Clean up lock files\n" +
+                "rm -rf /tmp/.X11-unix/X* 2>/dev/null || true\n" +
+                "rm -f /tmp/.X*-lock 2>/dev/null || true\n" +
+                "\n" +
+                "# Function to try starting VNC on a specific display\n" +
+                "start_vnc_on_display() {\n" +
+                "    local DISPLAY_NUM=$1\n" +
+                "    local PORT=$((5900 + DISPLAY_NUM))\n" +
+                "    local LOG_FILE=\"/tmp/xvnc-${DISPLAY_NUM}.log\"\n" +
+                "    \n" +
+                "    echo \"Trying display :${DISPLAY_NUM}, port ${PORT}...\"\n" +
+                "    \n" +
+                "    # Remove any existing socket/lock for this display\n" +
+                "    rm -rf \"/tmp/.X11-unix/X${DISPLAY_NUM}\" 2>/dev/null || true\n" +
+                "    rm -f \"/tmp/.X${DISPLAY_NUM}-lock\" 2>/dev/null || true\n" +
+                "    \n" +
+                "    if command -v Xvnc >/dev/null 2>&1; then\n" +
+                "        Xvnc :${DISPLAY_NUM} -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport ${PORT} >\"${LOG_FILE}\" 2>&1 &\n" +
+                "        local PID=$!\n" +
+                "        sleep 3\n" +
+                "        \n" +
+                "        # Check if process is still running\n" +
+                "        if kill -0 $PID 2>/dev/null; then\n" +
+                "            # Check if port is listening (if ss/netstat available)\n" +
+                "            local PORT_CHECK=0\n" +
+                "            if command -v ss >/dev/null 2>&1; then\n" +
+                "                if ss -ln 2>/dev/null | grep -q \":${PORT} \"; then\n" +
+                "                    PORT_CHECK=1\n" +
+                "                fi\n" +
+                "            elif command -v netstat >/dev/null 2>&1; then\n" +
+                "                if netstat -ln 2>/dev/null | grep -q \":${PORT} \"; then\n" +
+                "                    PORT_CHECK=1\n" +
+                "                fi\n" +
+                "            else\n" +
+                "                # Assume success if process is running and we can't check port\n" +
+                "                PORT_CHECK=1\n" +
+                "            fi\n" +
+                "            \n" +
+                "            if [ $PORT_CHECK -eq 1 ] || kill -0 $PID 2>/dev/null; then\n" +
+                "                echo \"VNC server started successfully on display :${DISPLAY_NUM}, port ${PORT}\"\n" +
+                "                # Save display and port to file\n" +
+                "                echo \"display:${DISPLAY_NUM}\" > /tmp/vnc-display.txt\n" +
+                "                echo \"port:${PORT}\" >> /tmp/vnc-display.txt\n" +
+                "                echo \"VNC display info saved to /tmp/vnc-display.txt\"\n" +
+                "                return 0\n" +
+                "            fi\n" +
                 "        fi\n" +
+                "        \n" +
+                "        # If we get here, Xvnc failed\n" +
+                "        echo \"Xvnc failed on display :${DISPLAY_NUM}, checking log...\"\n" +
+                "        cat \"${LOG_FILE}\" 2>/dev/null | head -5 || true\n" +
+                "        kill $PID 2>/dev/null || true\n" +
                 "    fi\n" +
-                "elif command -v vncserver >/dev/null 2>&1; then\n" +
-                "    # Use vncserver command (may have hostname issues)\n" +
-                "    echo 'Starting VNC server with vncserver command...'\n" +
-                "    vncserver :2 -geometry 1280x720 -depth 24 -localhost no -SecurityTypes None -xstartup /root/.vnc/xstartup >/tmp/vncserver.log 2>&1 || {\n" +
-                "        echo 'vncserver failed, checking logs...'\n" +
-                "        cat /tmp/vncserver.log 2>/dev/null || true\n" +
-                "        echo 'Trying Xvnc as fallback...'\n" +
-                "        if command -v Xvnc >/dev/null 2>&1; then\n" +
-                "            Xvnc :2 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5902 >/tmp/xvnc.log 2>&1 &\n" +
-                "            sleep 5\n" +
-                "        else\n" +
-                "            exit 1\n" +
-                "        }\n" +
-                "    }\n" +
-                "    sleep 5\n" +
-                "    echo 'VNC server started (vncserver command)'\n" +
-                "elif command -v Xvnc >/dev/null 2>&1; then\n" +
-                "    # Use Xvnc directly\n" +
-                "    echo 'Starting VNC server with Xvnc...'\n" +
-                "    Xvnc :2 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5902 >/tmp/xvnc.log 2>&1 &\n" +
-                "    sleep 5\n" +
-                "    echo 'VNC server started (Xvnc)'\n" +
-                "elif command -v x11vnc >/dev/null 2>&1; then\n" +
-                "    # For x11vnc, we need X server first\n" +
-                "    echo 'Starting X server and VNC with x11vnc...'\n" +
-                "    Xvfb :1 -screen 0 1280x720x24 >/tmp/xvfb.log 2>&1 &\n" +
-                "    sleep 3\n" +
-                "    export DISPLAY=:1\n" +
-                "    eval $(dbus-launch --sh-syntax --exit-with-session)\n" +
-                "    if command -v startxfce4 >/dev/null 2>&1; then\n" +
-                "        startxfce4 >/tmp/xfce4.log 2>&1 &\n" +
-                "    else\n" +
-                "        xfce4-session >/tmp/xfce4.log 2>&1 &\n" +
+                "    \n" +
+                "    return 1\n" +
+                "}\n" +
+                "\n" +
+                "# Try displays :1 through :10 until one works\n" +
+                "VNC_STARTED=0\n" +
+                "for DISPLAY_NUM in 1 2 3 4 5 6 7 8 9 10; do\n" +
+                "    if start_vnc_on_display $DISPLAY_NUM; then\n" +
+                "        VNC_STARTED=1\n" +
+                "        break\n" +
                 "    fi\n" +
-                "    sleep 3\n" +
-                "    x11vnc -display :2 -rfbport 5902 -nopw -forever -shared >/tmp/x11vnc.log 2>&1 &\n" +
-                "    echo 'VNC server started (x11vnc)'\n" +
-                "else\n" +
-                "    echo 'ERROR: No VNC server found (vncserver, Xvnc, or x11vnc)'\n" +
-                "    echo 'Available commands:'\n" +
-                "    which vncserver Xvnc x11vnc 2>/dev/null || echo 'None found'\n" +
+                "done\n" +
+                "\n" +
+                "if [ $VNC_STARTED -eq 0 ]; then\n" +
+                "    echo \"ERROR: Failed to start VNC server on any display (tried :1 through :10)\"\n" +
+                "    echo \"Check logs in /tmp/xvnc-*.log\"\n" +
                 "    exit 1\n" +
                 "fi\n" +
                 "\n" +
-                "# Verify VNC server is running\n" +
-                "sleep 3\n" +
-                "echo 'Checking if VNC server is listening...'\n" +
-                "if command -v ss >/dev/null 2>&1; then\n" +
-                "    if ss -ln 2>/dev/null | grep -q ':5901 '; then\n" +
-                "        echo 'VNC server verified on port 5901'\n" +
-                "    else\n" +
-                "        echo 'WARNING: VNC server may not be listening on port 5901'\n" +
-                "    fi\n" +
-                "elif command -v netstat >/dev/null 2>&1; then\n" +
-                "    if netstat -ln 2>/dev/null | grep -q ':5901 '; then\n" +
-                "        echo 'VNC server verified on port 5901'\n" +
-                "    else\n" +
-                "        echo 'WARNING: VNC server may not be listening on port 5901'\n" +
-                "    fi\n" +
-                "else\n" +
-                "    echo 'Cannot verify VNC server (ss and netstat not available)'\n" +
+                "echo \"=== VNC Server Startup Complete ===\"\n" +
+                "if [ -f /tmp/vnc-display.txt ]; then\n" +
+                "    echo \"Current VNC configuration:\"\n" +
+                "    cat /tmp/vnc-display.txt\n" +
                 "fi\n" +
-                "\n" +
-                "echo '=== VNC Server Startup Complete ==='\n" +
-                "echo 'VNC server should be running on display :1, port 5901 (XFCE)'\n" +
-                "echo 'Check /tmp/xfce4.log for desktop startup logs'\n" +
-                "echo 'Check /tmp/vncserver.log or /tmp/xvnc.log for VNC server logs'\n" +
+                "echo \"Check /tmp/xfce4.log for desktop startup logs\"\n" +
+                "echo \"Check /tmp/xvnc-*.log for VNC server logs\"\n" +
                 "STARTEOF\n" +
                 "fi\n" +
                 "chmod +x /usr/local/bin/start-vnc.sh\n" +
