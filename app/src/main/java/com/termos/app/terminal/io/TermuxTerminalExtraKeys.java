@@ -101,12 +101,16 @@ public class TermuxTerminalExtraKeys extends TerminalExtraKeys {
             if (terminalView != null && terminalView.mEmulator != null)
                 terminalView.mEmulator.toggleAutoScrollDisabled();
         } else {
-            // Only call super if terminalView is not null to avoid NullPointerException
-            TerminalView terminalView = getTerminalView();
-            if (terminalView != null) {
-                super.onTerminalExtraKeyButtonClick(view, key, ctrlDown, altDown, shiftDown, fnDown);
+            // Only call super if we have a valid terminal view client to avoid NullPointerException
+            if (mTermuxTerminalViewClient != null && mTermuxTerminalViewClient.getActivity() != null) {
+                TerminalView terminalView = mTermuxTerminalViewClient.getActivity().getTerminalView();
+                if (terminalView != null) {
+                    super.onTerminalExtraKeyButtonClick(view, key, ctrlDown, altDown, shiftDown, fnDown);
+                } else {
+                    Logger.logError(LOG_TAG, "TerminalView is null, cannot handle key: " + key);
+                }
             } else {
-                Logger.logError(LOG_TAG, "TerminalView is null, cannot handle key: " + key);
+                Logger.logError(LOG_TAG, "TerminalViewClient is null, cannot handle key: " + key);
             }
         }
     }
