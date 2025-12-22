@@ -1,5 +1,6 @@
 package com.termos.app.vnc;
 
+import android.app.Activity;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
@@ -57,12 +58,15 @@ public class VNCConnectionManager {
     /**
      * Initialize VNC connection with the RemoteCanvas widget.
      * Call this from OstabFragment.onViewCreated()
+     * @param canvas The RemoteCanvas widget to display VNC content
+     * @param activityContext Activity context required for showing dialogs (must be an Activity, not Application context)
      */
-    public void initialize(RemoteCanvas canvas) {
+    public void initialize(RemoteCanvas canvas, Activity activityContext) {
         this.canvas = canvas;
         
         // Create connection bean for localhost VNC
-        connection = new ConnectionBean(context);
+        // Use activity context for ConnectionBean as it may need Activity context
+        connection = new ConnectionBean(activityContext);
         connection.setAddress(VNC_HOST);
         connection.setPort(VNC_PORT);
         connection.setNickname("Termos OS");
@@ -79,12 +83,13 @@ public class VNCConnectionManager {
         // Create remote connection directly (VNC connection)
         // We use RemoteVncConnection directly instead of RemoteConnectionFactory
         // because the factory checks package name which doesn't contain "vnc"
+        // Must use Activity context here as RemoteConnection constructor shows a ProgressDialog
         Runnable hideKeyboardAndExtraKeys = () -> {
             // No-op for now, can be implemented if needed
         };
         
         remoteConnection = new RemoteVncConnection(
-            context,
+            activityContext,
             connection,
             canvas,
             hideKeyboardAndExtraKeys
@@ -96,7 +101,7 @@ public class VNCConnectionManager {
         };
         
         handler = new RemoteCanvasHandler(
-            context,
+            activityContext,
             canvas,
             remoteConnection,
             connection,
