@@ -122,8 +122,9 @@ abstract public class RemoteConnection implements PointerInputHandler, KeyInputH
                 true,
                 dialog -> handler.sendEmptyMessage(RemoteClientLibConstants.DISCONNECT_NO_MESSAGE));
 
-        // Make this dialog cancellable only upon hitting the Back button and not touching outside.
-        this.pd.setCanceledOnTouchOutside(false);
+        // Make this dialog cancellable - allow canceling on touch outside for debugging
+        // User can tap outside the dialog or press back button to close it
+        this.pd.setCanceledOnTouchOutside(true);
         this.isLocalToRemoteClipboardIntegrationEnabled = Utils.querySharedPreferenceBoolean(context, Constants.localToRemoteClipboardIntegration, true);
         this.isRemoteToLocalClipboardIntegrationEnabled = Utils.querySharedPreferenceBoolean(context, Constants.remoteToLocalClipboardIntegration, true);
     }
