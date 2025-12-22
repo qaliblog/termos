@@ -8,7 +8,6 @@ import com.iiordanov.bVNC.ConnectionBean;
 import com.iiordanov.bVNC.Constants;
 import com.iiordanov.bVNC.RemoteCanvas;
 import com.iiordanov.bVNC.input.RemoteCanvasHandler;
-import com.iiordanov.bVNC.protocol.RemoteConnectionFactory;
 import com.iiordanov.bVNC.protocol.RemoteVncConnection;
 import com.termos.app.linuxruntime.LinuxCommandExecutor;
 import com.termux.terminal.TerminalSessionClient;
@@ -77,19 +76,19 @@ public class VNCConnectionManager {
         canvas.setFocusableInTouchMode(true);
         canvas.setDrawingCacheEnabled(false);
         
-        // Create remote connection factory
+        // Create remote connection directly (VNC connection)
+        // We use RemoteVncConnection directly instead of RemoteConnectionFactory
+        // because the factory checks package name which doesn't contain "vnc"
         Runnable hideKeyboardAndExtraKeys = () -> {
             // No-op for now, can be implemented if needed
         };
         
-        RemoteConnectionFactory factory = new RemoteConnectionFactory(
+        remoteConnection = new RemoteVncConnection(
             context,
             connection,
             canvas,
             hideKeyboardAndExtraKeys
         );
-        
-        remoteConnection = factory.build();
         
         // Create handler
         Runnable setModes = () -> {
