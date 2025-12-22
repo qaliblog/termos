@@ -238,20 +238,20 @@ public class InstallOSActivity extends AppCompatActivity {
                     }
                     
                     // Command to execute within rootfs
-                    // The init-host script expects arguments that will be passed to the shell inside rootfs
-                    // We'll call it with -c and our script path
+                    // The init-host script must be executed via /system/bin/sh (like TerminalSession does)
+                    // It will set up proot and execute the command inside the rootfs
                     String shellCommand;
                     String[] shellArgs;
                     
-                    if (initScriptFile.exists() && initScriptFile.canExecute()) {
-                        // Use init-host script which will set up proot and execute the command
+                    if (initScriptFile.exists()) {
+                        // Execute init-host script via /system/bin/sh
                         // The init-host script will pass arguments to /bin/init inside rootfs
-                        shellCommand = initScriptFile.getAbsolutePath();
-                        shellArgs = new String[]{"-c", "/root/install-os.sh"};
-                        Log.d(TAG, "Using init-host script: " + shellCommand);
+                        shellCommand = "/system/bin/sh";
+                        shellArgs = new String[]{"-c", initScriptFile.getAbsolutePath() + " -c '/root/install-os.sh'"};
+                        Log.d(TAG, "Using init-host script: " + initScriptFile.getAbsolutePath());
                     } else {
-                        // Fallback: use /bin/sh directly (won't work in rootfs, but might help debug)
-                        Log.w(TAG, "Init script not found or not executable, using /bin/sh fallback");
+                        // Fallback: try /bin/sh directly (won't work in rootfs, but might help debug)
+                        Log.w(TAG, "Init script not found, using /bin/sh fallback");
                         shellCommand = "/bin/sh";
                         shellArgs = new String[]{"-c", "/root/install-os.sh"};
                     }
