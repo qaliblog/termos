@@ -99,6 +99,28 @@ public class LinuxSessionCreator {
         // Setup init script inside Linux (runs after proot starts)
         File initScriptFile = new File(localBinDir, "init");
         String distroType = rootfsManager.getRootfsDistroType(rootfsFileName);
+        
+        // Auto-detect and set distro type if not set (for existing installations)
+        if (distroType == null || distroType.isEmpty()) {
+            String lowerFileName = rootfsFileName.toLowerCase();
+            if (lowerFileName.contains("ubuntu")) {
+                distroType = "UBUNTU";
+                rootfsManager.setRootfsDistroType(rootfsFileName, distroType);
+            } else if (lowerFileName.contains("debian")) {
+                distroType = "DEBIAN";
+                rootfsManager.setRootfsDistroType(rootfsFileName, distroType);
+            } else if (lowerFileName.contains("kali")) {
+                distroType = "KALI";
+                rootfsManager.setRootfsDistroType(rootfsFileName, distroType);
+            } else if (lowerFileName.contains("arch")) {
+                distroType = "ARCH";
+                rootfsManager.setRootfsDistroType(rootfsFileName, distroType);
+            } else if (lowerFileName.contains("alpine")) {
+                distroType = "ALPINE";
+                rootfsManager.setRootfsDistroType(rootfsFileName, distroType);
+            }
+        }
+        
         String customInitScript = rootfsManager.getRootfsInitScript(rootfsFileName);
         
         String initScriptName;
@@ -115,6 +137,7 @@ public class LinuxSessionCreator {
             }
         } else {
             // Determine which init script to use
+            // First check distro type, then filename, then working mode
             if ("UBUNTU".equals(distroType)) {
                 initScriptName = "init-ubuntu.sh";
             } else if ("DEBIAN".equals(distroType)) {
@@ -123,7 +146,17 @@ public class LinuxSessionCreator {
                 initScriptName = "init-kali.sh";
             } else if ("ARCH".equals(distroType)) {
                 initScriptName = "init-arch.sh";
+            } else if ("ubuntu.tar.gz".equals(rootfsFileName) || rootfsFileName.toLowerCase().contains("ubuntu")) {
+                // Detect Ubuntu from filename if distro type not set
+                initScriptName = "init-ubuntu.sh";
+            } else if (rootfsFileName.toLowerCase().contains("debian")) {
+                initScriptName = "init-debian.sh";
+            } else if (rootfsFileName.toLowerCase().contains("kali")) {
+                initScriptName = "init-kali.sh";
+            } else if (rootfsFileName.toLowerCase().contains("arch")) {
+                initScriptName = "init-arch.sh";
             } else {
+                // Fallback to working mode or default to Alpine
                 initScriptName = (workingMode == WORKING_MODE_UBUNTU) ? "init-ubuntu.sh" : "init.sh";
             }
             

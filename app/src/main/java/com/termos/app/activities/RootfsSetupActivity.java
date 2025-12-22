@@ -228,6 +228,25 @@ public class RootfsSetupActivity extends AppCompatActivity {
                 rootfsManager.markRootfsInstalled(rootfsFileName, displayName);
                 rootfsManager.setRootfsFileForWorkingMode(workingMode, rootfsFileName);
                 
+                // Set distro type based on filename
+                String distroType = null;
+                String lowerFileName = rootfsFileName.toLowerCase();
+                if (lowerFileName.contains("ubuntu")) {
+                    distroType = "UBUNTU";
+                } else if (lowerFileName.contains("debian")) {
+                    distroType = "DEBIAN";
+                } else if (lowerFileName.contains("kali")) {
+                    distroType = "KALI";
+                } else if (lowerFileName.contains("arch")) {
+                    distroType = "ARCH";
+                } else if (lowerFileName.contains("alpine")) {
+                    distroType = "ALPINE";
+                }
+                
+                if (distroType != null) {
+                    rootfsManager.setRootfsDistroType(rootfsFileName, distroType);
+                }
+                
                 publishProgress(100);
                 return true;
                 

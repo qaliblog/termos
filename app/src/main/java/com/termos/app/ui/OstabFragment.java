@@ -62,9 +62,15 @@ public class OstabFragment extends Fragment {
                     TermuxActivity termuxActivity = (TermuxActivity) activity;
                     if (termuxActivity.getTermuxService() != null) {
                         vncManager.setServiceClient(termuxActivity.getTermuxService().getTermuxTerminalSessionClient());
+                    } else {
+                        Log.w(TAG, "TermuxService not available yet, connection may fail");
                     }
                     
                     Log.d(TAG, "VNC viewer initialized");
+                    
+                    // Start connection immediately after initialization
+                    // The connection will handle starting the VNC server if needed
+                    vncManager.connect();
                 } catch (Exception e) {
                     Log.e(TAG, "Failed to initialize VNC connection", e);
                     // If initialization fails due to window token, try once more after a delay
@@ -79,6 +85,9 @@ public class OstabFragment extends Fragment {
                                         vncManager.setServiceClient(termuxActivity.getTermuxService().getTermuxTerminalSessionClient());
                                     }
                                     Log.d(TAG, "VNC viewer initialized (retry)");
+                                    
+                                    // Start connection after retry initialization
+                                    vncManager.connect();
                                 } catch (Exception retryException) {
                                     Log.e(TAG, "Failed to initialize VNC connection (retry)", retryException);
                                 }

@@ -109,6 +109,10 @@ public class VNCConnectionManager {
         );
         
         Log.d(TAG, "VNC connection manager initialized");
+        
+        // Note: Connection is not started here. It will be started when connect() is called.
+        // The ProgressDialog shown by RemoteConnection constructor will remain visible
+        // until the connection actually starts or fails.
     }
     
     /**
@@ -142,9 +146,11 @@ public class VNCConnectionManager {
                 public void onSuccess(String output) {
                     Log.d(TAG, "VNC server ready: " + output);
                     // Wait a moment for server to be ready, then connect
+                    // Increased delay to ensure VNC server is fully started
                     new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        Log.d(TAG, "Attempting to connect to VNC server after delay");
                         doConnect();
-                    }, 1000); // 1 second delay
+                    }, 2000); // 2 second delay to ensure server is ready
                 }
                 
                 @Override
@@ -166,14 +172,26 @@ public class VNCConnectionManager {
      */
     private void doConnect() {
         // Check if connection is ready
-        if (connection.isReadyForConnection()) {
-            // Start connection
-            handler.sendEmptyMessage(RemoteClientLibConstants.REINIT_SESSION);
-            isConnected = true;
-            isPaused = false;
-        } else {
+        if (!connection.isReadyForConnection()) {
             Log.e(TAG, "Connection not ready: missing required parameters");
+            return;
         }
+        
+        // Check if handler is available
+        if (handler == null) {
+            Log.e(TAG, "Handler not available, cannot connect");
+            return;
+        }
+        
+        Log.d(TAG, "Starting VNC connection...");
+        
+        // Start connection by sending REINIT_SESSION message
+        // This will call initializeConnection() which starts the connection thread
+        handler.sendEmptyMessage(RemoteClientLibConstants.REINIT_SESSION);
+        
+        // Note: isConnected will be set to true when connection actually succeeds
+        // We set it here optimistically, but the connection might fail
+        // The actual connection state should be tracked by RemoteConnection
     }
     
     /**
