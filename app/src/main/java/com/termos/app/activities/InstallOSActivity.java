@@ -25,8 +25,7 @@ import com.termux.shared.termux.shell.command.environment.TermuxShellEnvironment
 
 /**
  * Activity to install desktop environment and VNC server for OS tab.
- * Installs XFCE desktop environment (lightweight, VNC-friendly) and sets up VNC server.
- * Note: Ubuntu Touch uses Lomiri (Unity8), but for VNC in container, XFCE is more practical.
+ * Installs Lomiri desktop environment (Ubuntu Touch's desktop) and sets up VNC server.
  */
 public class InstallOSActivity extends AppCompatActivity {
     private static final String TAG = "InstallOSActivity";
@@ -137,18 +136,53 @@ public class InstallOSActivity extends AppCompatActivity {
                 String distroName = isUbuntu ? "Ubuntu/Debian" : "Alpine";
                 publishProgress("Detected " + distroName + " distribution\nInstalling desktop environment...");
                 
+                // Ensure rootfs is extracted
+                File filesDir = InstallOSActivity.this.getFilesDir();
+                File localDir = new File(filesDir.getParentFile(), "local");
+                String rootfsDirName = rootfsFileName != null ? 
+                    rootfsFileName.replace(".tar.gz", "").replace(".tar", "").toLowerCase() : "ubuntu";
+                File rootfsDir = new File(localDir, rootfsDirName);
+                
+                // Check if rootfs is extracted
+                if (!rootfsDir.exists() || (!new File(rootfsDir, "usr").exists() && !new File(rootfsDir, "bin").exists())) {
+                    errorMessage = "Rootfs not extracted. Please start a terminal session first to extract the rootfs.";
+                    Log.e(TAG, "Rootfs not extracted at: " + rootfsDir.getAbsolutePath());
+                    return false;
+                }
+                
                 // Install desktop environment and VNC server
                 String installScript = createInstallScript(isUbuntu);
+                
+                // Save script to rootfs
+                File installScriptFile = new File(rootfsDir, "root/install-os.sh");
+                
+                // Ensure directories exist
+                installScriptFile.getParentFile().mkdirs();
+                
+                try {
+                    java.io.FileWriter writer = new java.io.FileWriter(installScriptFile);
+                    writer.write(installScript);
+                    writer.close();
+                    installScriptFile.setExecutable(true);
+                    Log.d(TAG, "Installation script saved to: " + installScriptFile.getAbsolutePath());
+                } catch (java.io.IOException e) {
+                    errorMessage = "Failed to save installation script: " + e.getMessage();
+                    Log.e(TAG, "Failed to save script", e);
+                    return false;
+                }
                 
                 final boolean[] success = {false};
                 final String[] error = {null};
                 
-                // Execute using AppShell directly (doesn't require TermuxService)
+                // Execute using AppShell - the command will run within rootfs via init-host script
                 try {
+                    // Command to execute within rootfs
+                    String command = "/root/install-os.sh";
+                    
                     ExecutionCommand executionCommand = new ExecutionCommand(
                         -1, // id
                         "/bin/sh",
-                        new String[]{"-c", installScript},
+                        new String[]{"-c", command},
                         null, // stdin
                         "/root", // working directory
                         ExecutionCommand.Runner.APP_SHELL.getName(),
@@ -157,25 +191,32 @@ public class InstallOSActivity extends AppCompatActivity {
                     
                     IShellEnvironment shellEnvironment = new TermuxShellEnvironment();
                     
+                    // Set environment variables for rootfs detection
+                    java.util.HashMap<String, String> additionalEnvironment = new java.util.HashMap<>();
+                    additionalEnvironment.put("ROOTFS_FILE", rootfsFileName);
+                    additionalEnvironment.put("ROOTFS_DIR", rootfsDirName);
+                    
                     AppShell.AppShellClient appShellClient = new AppShell.AppShellClient() {
                         @Override
                         public void onAppShellExited(AppShell appShell) {
                             if (appShell == null) {
-                                error[0] = "Command execution failed";
+                                error[0] = "Command execution failed - AppShell returned null";
                                 return;
                             }
                             
                             ExecutionCommand cmd = appShell.getExecutionCommand();
                             if (cmd == null) {
-                                error[0] = "Command execution failed";
+                                error[0] = "Command execution failed - ExecutionCommand is null";
                                 return;
                             }
                             
                             int exitCode = cmd.resultData.exitCode;
-                            String stdout = cmd.resultData.stdout.toString();
-                            String stderr = cmd.resultData.stderr.toString();
+                            String stdout = cmd.resultData.stdout != null ? cmd.resultData.stdout.toString() : "";
+                            String stderr = cmd.resultData.stderr != null ? cmd.resultData.stderr.toString() : "";
                             
                             Log.d(TAG, "Installation command completed (exit code: " + exitCode + ")");
+                            Log.d(TAG, "stdout: " + stdout);
+                            Log.d(TAG, "stderr: " + stderr);
                             
                             if (exitCode == 0) {
                                 success[0] = true;
@@ -192,12 +233,13 @@ public class InstallOSActivity extends AppCompatActivity {
                         executionCommand,
                         appShellClient,
                         shellEnvironment,
-                        null, // additionalEnvironment
+                        additionalEnvironment, // additionalEnvironment with ROOTFS_FILE and ROOTFS_DIR
                         false // isSynchronous
                     );
                     
                     if (appShell == null) {
-                        errorMessage = "Failed to start installation";
+                        errorMessage = "Failed to start installation - AppShell.execute() returned null. Check if rootfs is properly initialized.";
+                        Log.e(TAG, "AppShell.execute() returned null");
                         return false;
                     }
                     
@@ -257,7 +299,7 @@ public class InstallOSActivity extends AppCompatActivity {
                 prefs.edit().putBoolean(KEY_OS_INSTALLED, true).apply();
                 
                 statusText.setText("Installation complete!\n\n" +
-                    "Desktop environment (XFCE) and VNC server are installed and configured.\n" +
+                    "Desktop environment (Lomiri) and VNC server are installed and configured.\n" +
                     "The OS tab will automatically connect to the VNC server when opened.");
                 installButton.setVisibility(View.GONE);
                 uninstallButton.setVisibility(View.VISIBLE);
@@ -272,12 +314,12 @@ public class InstallOSActivity extends AppCompatActivity {
     
     /**
      * Create installation script for desktop environment and VNC server.
-     * For Ubuntu: Installs XFCE (lightweight, VNC-friendly)
-     * Note: Ubuntu Touch uses Lomiri, but XFCE is more practical for VNC.
+     * For Ubuntu: Installs Lomiri (Ubuntu Touch desktop environment)
+     * For Alpine: Falls back to XFCE (Lomiri not available)
      */
     private String createInstallScript(boolean isUbuntu) {
         if (isUbuntu) {
-            // Ubuntu/Debian installation script
+            // Ubuntu/Debian installation script - Lomiri
             return "#!/bin/bash\n" +
                 "set -e\n" +
                 "export DEBIAN_FRONTEND=noninteractive\n" +
@@ -285,9 +327,21 @@ public class InstallOSActivity extends AppCompatActivity {
                 "# Update package lists\n" +
                 "apt-get update -qq\n" +
                 "\n" +
-                "# Install XFCE desktop environment (lightweight, VNC-friendly)\n" +
-                "# Note: Ubuntu Touch uses Lomiri, but XFCE works better with VNC\n" +
-                "apt-get install -y -qq xfce4 xfce4-goodies xfce4-terminal\n" +
+                "# Try to install Lomiri (Ubuntu Touch desktop environment)\n" +
+                "# Lomiri packages may not be in standard repos, so we'll try and fallback to XFCE\n" +
+                "LOMIRI_INSTALLED=0\n" +
+                "if apt-get install -y -qq lomiri-session unity8-desktop-session-mir 2>/dev/null; then\n" +
+                "    LOMIRI_INSTALLED=1\n" +
+                "    echo 'Lomiri installed successfully'\n" +
+                "else\n" +
+                "    echo 'Lomiri packages not available, installing XFCE as fallback...'\n" +
+                "    apt-get install -y -qq xfce4 xfce4-goodies xfce4-terminal || true\n" +
+                "fi\n" +
+                "\n" +
+                "# Install Mir display server (required for Lomiri)\n" +
+                "if [ $LOMIRI_INSTALLED -eq 1 ]; then\n" +
+                "    apt-get install -y -qq mir mir-graphics-drivers-nvidia mir-graphics-drivers-mesa || true\n" +
+                "fi\n" +
                 "\n" +
                 "# Install VNC server (TigerVNC or tightvnc)\n" +
                 "apt-get install -y -qq tigervnc-standalone-server tigervnc-common || \\\n" +
@@ -295,11 +349,33 @@ public class InstallOSActivity extends AppCompatActivity {
                 "apt-get install -y -qq x11vnc\n" +
                 "\n" +
                 "# Install additional utilities\n" +
-                "apt-get install -y -qq dbus-x11 xfce4-session xfce4-panel\n" +
+                "apt-get install -y -qq dbus-x11\n" +
+                "if [ $LOMIRI_INSTALLED -eq 0 ]; then\n" +
+                "    apt-get install -y -qq xfce4-session xfce4-panel\n" +
+                "fi\n" +
                 "\n" +
                 "# Create VNC startup script\n" +
                 "mkdir -p /root/.vnc\n" +
-                "cat > /root/.vnc/xstartup << 'VNCEOF'\n" +
+                "if [ $LOMIRI_INSTALLED -eq 1 ]; then\n" +
+                "    # Lomiri startup script\n" +
+                "    cat > /root/.vnc/xstartup << 'VNCEOF'\n" +
+                "#!/bin/bash\n" +
+                "unset SESSION_MANAGER\n" +
+                "unset DBUS_SESSION_BUS_ADDRESS\n" +
+                "export DISPLAY=:1\n" +
+                "export XDG_SESSION_TYPE=mir\n" +
+                "export MIR_SOCKET=/run/mir_socket\n" +
+                "[ -x /etc/vnc/xstartup ] && exec /etc/vnc/xstartup\n" +
+                "[ -r $HOME/.Xresources ] && xrdb $HOME/.Xresources\n" +
+                "# Start Mir display server\n" +
+                "mir_display_server --wayland-socket-name=wayland-0 &\n" +
+                "sleep 2\n" +
+                "# Start Lomiri session\n" +
+                "lomiri-session &\n" +
+                "VNCEOF\n" +
+                "else\n" +
+                "    # XFCE startup script (fallback)\n" +
+                "    cat > /root/.vnc/xstartup << 'VNCEOF'\n" +
                 "#!/bin/bash\n" +
                 "unset SESSION_MANAGER\n" +
                 "unset DBUS_SESSION_BUS_ADDRESS\n" +
@@ -309,6 +385,7 @@ public class InstallOSActivity extends AppCompatActivity {
                 "x-window-manager &\n" +
                 "startxfce4 &\n" +
                 "VNCEOF\n" +
+                "fi\n" +
                 "chmod +x /root/.vnc/xstartup\n" +
                 "\n" +
                 "# Set VNC password (empty password for localhost)\n" +
@@ -317,7 +394,34 @@ public class InstallOSActivity extends AppCompatActivity {
                 "\n" +
                 "# Create VNC startup script in /usr/local/bin\n" +
                 "mkdir -p /usr/local/bin\n" +
-                "cat > /usr/local/bin/start-vnc.sh << 'STARTEOF'\n" +
+                "if [ $LOMIRI_INSTALLED -eq 1 ]; then\n" +
+                "    cat > /usr/local/bin/start-vnc.sh << 'STARTEOF'\n" +
+                "#!/bin/bash\n" +
+                "set -e\n" +
+                "export DISPLAY=:1\n" +
+                "export USER=root\n" +
+                "export HOME=/root\n" +
+                "export XDG_SESSION_TYPE=mir\n" +
+                "\n" +
+                "# Kill existing VNC server if running\n" +
+                "pkill -f 'vncserver :1' || true\n" +
+                "pkill -f 'Xvnc :1' || true\n" +
+                "pkill -f 'x11vnc.*:1' || true\n" +
+                "pkill -f 'mir_display_server' || true\n" +
+                "sleep 1\n" +
+                "\n" +
+                "# Start VNC server with Lomiri\n" +
+                "if command -v vncserver >/dev/null 2>&1; then\n" +
+                "    vncserver :1 -geometry 1280x720 -depth 24 -localhost no -SecurityTypes None -xstartup /root/.vnc/xstartup 2>/dev/null || true\n" +
+                "elif command -v Xvnc >/dev/null 2>&1; then\n" +
+                "    Xvnc :1 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5901 -xstartup /root/.vnc/xstartup &\n" +
+                "    sleep 2\n" +
+                "fi\n" +
+                "\n" +
+                "echo 'VNC server started on display :1, port 5901 (Lomiri)'\n" +
+                "STARTEOF\n" +
+                "else\n" +
+                "    cat > /usr/local/bin/start-vnc.sh << 'STARTEOF'\n" +
                 "#!/bin/bash\n" +
                 "set -e\n" +
                 "export DISPLAY=:1\n" +
@@ -344,8 +448,9 @@ public class InstallOSActivity extends AppCompatActivity {
                 "    x11vnc -display :1 -rfbport 5901 -nopw -forever -shared &\n" +
                 "fi\n" +
                 "\n" +
-                "echo 'VNC server started on display :1, port 5901'\n" +
+                "echo 'VNC server started on display :1, port 5901 (XFCE)'\n" +
                 "STARTEOF\n" +
+                "fi\n" +
                 "chmod +x /usr/local/bin/start-vnc.sh\n" +
                 "\n" +
                 "echo 'Installation complete!'\n";
