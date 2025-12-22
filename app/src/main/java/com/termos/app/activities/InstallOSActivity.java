@@ -600,6 +600,13 @@ public class InstallOSActivity extends AppCompatActivity {
                 "\n" +
                 "echo '=== Starting VNC Server ==='\n" +
                 "\n" +
+                "# Set hostname to avoid vncserver hostname errors\n" +
+                "if ! hostname >/dev/null 2>&1 || [ -z \"$(hostname 2>/dev/null)\" ]; then\n" +
+                "    echo 'localhost' > /etc/hostname 2>/dev/null || true\n" +
+                "    hostname localhost 2>/dev/null || true\n" +
+                "    export HOSTNAME=localhost\n" +
+                "fi\n" +
+                "\n" +
                 "# Kill existing VNC server if running\n" +
                 "pkill -f 'vncserver :1' 2>/dev/null || true\n" +
                 "pkill -f 'Xvnc :1' 2>/dev/null || true\n" +
@@ -610,10 +617,15 @@ public class InstallOSActivity extends AppCompatActivity {
                 "if command -v vncserver >/dev/null 2>&1; then\n" +
                 "    # Use vncserver command\n" +
                 "    echo 'Starting VNC server with vncserver command...'\n" +
-                "    vncserver :1 -geometry 1280x720 -depth 24 -localhost no -SecurityTypes None -xstartup /root/.vnc/xstartup >/tmp/vncserver.log 2>&1 || {\n" +
-                "        echo 'vncserver failed, checking logs...'\n" +
-                "        cat /tmp/vncserver.log 2>/dev/null || true\n" +
-                "        exit 1\n" +
+                "    # Use -localhost no and -SecurityTypes None to avoid hostname issues\n" +
+                "    vncserver :1 -geometry 1280x720 -depth 24 -localhost no -SecurityTypes None -xstartup /root/.vnc/xstartup -hostname localhost >/tmp/vncserver.log 2>&1 || {\n" +
+                "        echo 'vncserver failed, trying without hostname option...'\n" +
+                "        # Try without hostname option\n" +
+                "        HOSTNAME=localhost vncserver :1 -geometry 1280x720 -depth 24 -localhost no -SecurityTypes None -xstartup /root/.vnc/xstartup >/tmp/vncserver.log 2>&1 || {\n" +
+                "            echo 'vncserver failed, checking logs...'\n" +
+                "            cat /tmp/vncserver.log 2>/dev/null || true\n" +
+                "            exit 1\n" +
+                "        }\n" +
                 "    }\n" +
                 "    sleep 5\n" +
                 "    echo 'VNC server started (vncserver command)'\n" +
