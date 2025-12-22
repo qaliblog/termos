@@ -130,17 +130,22 @@ public class LinuxCommandExecutor {
     public void checkVNCServerRunning(com.termux.terminal.TerminalSessionClient serviceClient,
                                       ServerCheckCallback callback) {
         // Try to check if port 5901 is listening
-        executeCommand("netstat -ln 2>/dev/null | grep ':5901 ' || ss -ln 2>/dev/null | grep ':5901 ' || echo 'not_found'", 
+        // Also check if VNC processes are running
+        executeCommand("(netstat -ln 2>/dev/null | grep ':5901 ') || (ss -ln 2>/dev/null | grep ':5901 ') || (ps aux 2>/dev/null | grep -E '[X]vnc|[v]ncserver|[x]11vnc' | grep -v grep) || echo 'not_found'", 
             serviceClient,
             new CommandCallback() {
                 @Override
                 public void onSuccess(String output) {
-                    boolean isRunning = output != null && output.contains("5901") && !output.contains("not_found");
+                    boolean isRunning = output != null && 
+                        (output.contains("5901") || output.contains("Xvnc") || output.contains("vncserver") || output.contains("x11vnc")) && 
+                        !output.contains("not_found");
+                    Log.d(TAG, "VNC server check result: " + output + " (isRunning: " + isRunning + ")");
                     callback.onResult(isRunning);
                 }
                 
                 @Override
                 public void onError(String error) {
+                    Log.w(TAG, "VNC server check failed: " + error);
                     // If check command fails, assume server is not running
                     callback.onResult(false);
                 }
@@ -163,7 +168,24 @@ public class LinuxCommandExecutor {
                 } else {
                     Log.d(TAG, "Starting VNC server...");
                     String vncCommand = runtimeManager.getVNCStartCommand();
-                    executeCommand(vncCommand, serviceClient, callback);
+                    Log.d(TAG, "Executing VNC command: " + vncCommand);
+                    executeCommand(vncCommand, serviceClient, new CommandCallback() {
+                        @Override
+                        public void onSuccess(String output) {
+                            Log.d(TAG, "VNC server start output: " + output);
+                            if (callback != null) {
+                                callback.onSuccess(output);
+                            }
+                        }
+                        
+                        @Override
+                        public void onError(String error) {
+                            Log.e(TAG, "VNC server start error: " + error);
+                            if (callback != null) {
+                                callback.onError(error);
+                            }
+                        }
+                    });
                 }
             }
         });
