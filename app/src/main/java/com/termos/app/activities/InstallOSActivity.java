@@ -509,7 +509,7 @@ public class InstallOSActivity extends AppCompatActivity {
                 "#!/bin/bash\n" +
                 "unset SESSION_MANAGER\n" +
                 "unset DBUS_SESSION_BUS_ADDRESS\n" +
-                "export DISPLAY=:2\n" +
+                "export DISPLAY=${DISPLAY:-:1}\n" +
                 "export XDG_SESSION_TYPE=mir\n" +
                 "export MIR_SOCKET=/run/mir_socket\n" +
                 "[ -x /etc/vnc/xstartup ] && exec /etc/vnc/xstartup\n" +
@@ -526,7 +526,7 @@ public class InstallOSActivity extends AppCompatActivity {
                 "#!/bin/bash\n" +
                 "unset SESSION_MANAGER\n" +
                 "unset DBUS_SESSION_BUS_ADDRESS\n" +
-                "export DISPLAY=:2\n" +
+                "export DISPLAY=${DISPLAY:-:1}\n" +
                 "export USER=root\n" +
                 "export HOME=/root\n" +
                 "\n" +
@@ -587,7 +587,7 @@ public class InstallOSActivity extends AppCompatActivity {
                 "    cat > /usr/local/bin/start-vnc.sh << 'STARTEOF'\n" +
                 "#!/bin/bash\n" +
                 "set -e\n" +
-                "export DISPLAY=:2\n" +
+                "export DISPLAY=${DISPLAY:-:1}\n" +
                 "export USER=root\n" +
                 "export HOME=/root\n" +
                 "export XDG_SESSION_TYPE=mir\n" +
@@ -613,7 +613,7 @@ public class InstallOSActivity extends AppCompatActivity {
                 "    cat > /usr/local/bin/start-vnc.sh << 'STARTEOF'\n" +
                 "#!/bin/bash\n" +
                 "set -e\n" +
-                "export DISPLAY=:2\n" +
+                "export DISPLAY=${DISPLAY:-:1}\n" +
                 "export USER=root\n" +
                 "export HOME=/root\n" +
                 "\n" +
@@ -743,7 +743,7 @@ public class InstallOSActivity extends AppCompatActivity {
                 "mkdir -p /usr/local/bin\n" +
                 "cat > /usr/local/bin/start-vnc.sh << 'STARTEOF'\n" +
                 "#!/bin/sh\n" +
-                "export DISPLAY=:2\n" +
+                "export DISPLAY=${DISPLAY:-:1}\n" +
                 "Xvfb :1 -screen 0 1280x720x24 &\n" +
                 "sleep 2\n" +
                 "DISPLAY=:2 startxfce4 &\n" +
@@ -830,7 +830,7 @@ public class InstallOSActivity extends AppCompatActivity {
                     xstartupScript = "#!/bin/bash\n" +
                         "unset SESSION_MANAGER\n" +
                         "unset DBUS_SESSION_BUS_ADDRESS\n" +
-                        "export DISPLAY=:2\n" +
+                        "export DISPLAY=${DISPLAY:-:1}\n" +
                         "[ -r $HOME/.Xresources ] && xrdb $HOME/.Xresources\n" +
                         "# Start D-Bus session\n" +
                         "eval $(dbus-launch --sh-syntax)\n" +
