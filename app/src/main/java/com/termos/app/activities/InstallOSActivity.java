@@ -544,8 +544,16 @@ public class InstallOSActivity extends AppCompatActivity {
                 "    # Start dbus-daemon directly instead of dbus-launch to avoid shm-helper errors\n" +
                 "    if command -v dbus-daemon >/dev/null 2>&1; then\n" +
                 "        dbus-daemon --session --fork --print-address > /tmp/dbus-session-address 2>&1\n" +
-                "        export DBUS_SESSION_BUS_ADDRESS=$(cat /tmp/dbus-session-address 2>/dev/null | head -1)\n" +
-                "        echo 'D-Bus started at: $DBUS_SESSION_BUS_ADDRESS' >> /tmp/xstartup.log 2>&1\n" +
+                "        sleep 1\n" +
+                "        DBUS_ADDR=$(cat /tmp/dbus-session-address 2>/dev/null | head -1 | grep -v '^dbus-daemon' | grep -v '^#' | tr -d '\\n')\n" +
+                "        if [ -n \"$DBUS_ADDR\" ]; then\n" +
+                "            export DBUS_SESSION_BUS_ADDRESS=\"$DBUS_ADDR\"\n" +
+                "            echo \"D-Bus started at: $DBUS_SESSION_BUS_ADDRESS\" >> /tmp/xstartup.log 2>&1\n" +
+                "        else\n" +
+                "            echo \"D-Bus daemon started but address not found, trying dbus-launch...\" >> /tmp/xstartup.log 2>&1\n" +
+                "            eval $(dbus-launch --sh-syntax --exit-with-session) 2>>/tmp/xstartup.log\n" +
+                "            echo \"D-Bus started via dbus-launch: $DBUS_SESSION_BUS_ADDRESS\" >> /tmp/xstartup.log 2>&1\n" +
+                "        fi\n" +
                 "    else\n" +
                 "        # Fallback to dbus-launch if dbus-daemon not available\n" +
                 "        eval $(dbus-launch --sh-syntax --exit-with-session) 2>>/tmp/xstartup.log\n" +
