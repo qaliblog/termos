@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="24dp"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Header -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Install OS"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Install desktop environment and VNC server for OS tab"
+            android:textSize="16sp"
+            android:gravity="center"
+            android:layout_marginBottom="24dp" />
+
+        <!-- Description -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="This will install:\n• XFCE desktop environment (lightweight, VNC-friendly)\n• VNC server (TigerVNC or tightvnc)\n• Required dependencies\n\nNote: Ubuntu Touch uses Lomiri, but XFCE is more practical for VNC in containers."
+            android:textSize="14sp"
+            android:layout_marginBottom="24dp" />
+
+        <!-- Status Text -->
+        <TextView
+            android:id="@+id/status_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Click Install OS to set up desktop environment and VNC server."
+            android:textSize="14sp"
+            android:gravity="center"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"
+            android:minHeight="48dp" />
+
+        <!-- Progress Bar -->
+        <ProgressBar
+            android:id="@+id/progress_bar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:indeterminate="true"
+            android:visibility="gone"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Install Button -->
+        <Button
+            android:id="@+id/install_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Install OS"
+            android:textSize="16sp"
+            android:padding="16dp"
+            android:layout_marginTop="16dp" />
+
+        <!-- Uninstall Button -->
+        <Button
+            android:id="@+id/uninstall_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Uninstall OS"
+            android:textSize="16sp"
+            android:padding="16dp"
+            android:layout_marginTop="8dp"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+</ScrollView>

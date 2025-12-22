@@ -70,6 +70,7 @@ public class SettingsActivity extends AppCompatActivity {
                     configureTermuxTaskerPreference(context);
                     configureTermuxWidgetPreference(context);
                     configureRootfsSetupPreference(context);
+                    configureInstallOSPreference(context);
                     configureAboutPreference(context);
                     configureDonatePreference(context);
                 }
@@ -149,6 +150,17 @@ public class SettingsActivity extends AppCompatActivity {
             if (rootfsSetupPreference != null) {
                 rootfsSetupPreference.setOnPreferenceClickListener(preference -> {
                     Intent intent = new Intent(context, RootfsSetupActivity.class);
+                    context.startActivity(intent);
+                    return true;
+                });
+            }
+        }
+
+        private void configureInstallOSPreference(@NonNull Context context) {
+            Preference installOSPreference = findPreference("install_os");
+            if (installOSPreference != null) {
+                installOSPreference.setOnPreferenceClickListener(preference -> {
+                    Intent intent = new Intent(context, InstallOSActivity.class);
                     context.startActivity(intent);
                     return true;
                 });

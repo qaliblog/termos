@@ -114,6 +114,13 @@
             android:noHistory="true" />
 
         <activity
+            android:name=".app.activities.InstallOSActivity"
+            android:exported="false"
+            android:label="Install OS"
+            android:theme="@style/Theme.TermuxApp.DayNight.NoActionBar"
+            android:noHistory="true" />
+
+        <activity
             android:name=".shared.activities.ReportActivity"
             android:theme="@style/Theme.MarkdownViewActivity.DayNight"
             android:documentLaunchMode="intoExisting" />

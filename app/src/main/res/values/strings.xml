@@ -236,6 +236,10 @@
     <string name="rootfs_setup_preference_title">Rootfs Setup</string>
     <string name="rootfs_setup_preference_summary">Install or manage Linux rootfs</string>
 
+    <!-- Install OS Preference -->
+    <string name="install_os_preference_title">Install OS</string>
+    <string name="install_os_preference_summary">Install desktop environment and VNC server for OS tab</string>
+
     <!-- Tab Titles -->
     <string name="tab_terminal_title">Terminal</string>
     <string name="tab_os_title">OS</string>
