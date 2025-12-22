@@ -28,7 +28,7 @@ import com.iiordanov.bVNC.protocol.RemoteConnection;
 public class VNCConnectionManager {
     private static final String TAG = "VNCConnectionManager";
     private static final String VNC_HOST = "127.0.0.1";
-    private static final int VNC_PORT = 5901; // Display :1
+    private static final int VNC_PORT = 5902; // Display :2 (using :2 because :1 socket gets stuck)
     
     private static VNCConnectionManager instance;
     private Context context;

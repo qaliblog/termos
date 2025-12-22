@@ -1,0 +1,277 @@
+# Commands to test VNC and XFCE desktop
+# Copy and paste these commands one by one into termos terminal
+
+# ============================================
+# FIX: Remove X lock file and kill processes (run this first if Xvnc says "already active")
+# ============================================
+# Remove lock file and kill all VNC processes
+rm -f /tmp/.X1-lock /tmp/.X11-unix/X1; pkill -9 Xvnc 2>/dev/null; pkill -9 vncserver 2>/dev/null; sleep 2; echo "Cleaned up lock files and processes"
+
+# ONE-LINER FIX (copy this):
+rm -f /tmp/.X1-lock /tmp/.X11-unix/X1; pkill -9 Xvnc 2>/dev/null; pkill -9 vncserver 2>/dev/null; sleep 2; echo "Cleanup done - now start Xvnc"
+
+# ============================================
+# AGGRESSIVE CLEANUP + START (fish-compatible):
+# ============================================
+# This will force remove lock files and kill all X/VNC processes
+rm -f /tmp/.X1-lock; rm -f /tmp/.X*-lock; rm -rf /tmp/.X11-unix/X1; rm -rf /tmp/.X11-unix/X*; killall -9 Xvnc 2>/dev/null; killall -9 vncserver 2>/dev/null; pkill -9 Xvnc 2>/dev/null; pkill -9 vncserver 2>/dev/null; sleep 3; ls -la /tmp/.X* 2>/dev/null || echo "Lock files removed"; ps aux | grep -E "Xvnc|vnc" | grep -v grep || echo "No VNC processes running"; echo "=== Cleanup complete, starting Xvnc ==="; Xvnc :1 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5901 >/tmp/xvnc.log 2>&1 &; sleep 5; echo "=== Xvnc Log ==="; cat /tmp/xvnc.log; echo ""; echo "=== Process Check ==="; ps aux | grep Xvnc | grep -v grep; echo "=== Check OS tab ==="
+
+# ============================================
+# COMPLETE FIX: Remove socket directory and use different display
+# ============================================
+# Step 1: Check what's using the socket
+echo "=== Checking what's using display :1 ==="; ls -la /tmp/.X11-unix/ 2>/dev/null || echo "No .X11-unix directory"; ps aux | grep -E "X|vnc|:1" | grep -v grep || echo "No processes found"
+
+# Step 2: Nuclear cleanup - remove entire socket directory
+rm -rf /tmp/.X11-unix; rm -f /tmp/.X*-lock; killall -9 Xvnc 2>/dev/null; killall -9 X 2>/dev/null; pkill -9 Xvnc 2>/dev/null; pkill -9 -f "X.*:1" 2>/dev/null; sleep 3; echo "=== Cleanup done ==="
+
+# Step 3: Try using display :2 instead of :1 (if :1 is stuck)
+echo "=== Trying display :2 instead ==="; rm -rf /tmp/.X11-unix/X2; rm -f /tmp/.X2-lock; printf '#!/bin/bash\nexport DISPLAY=:2\nsleep 1\nxterm &\ntail -f /dev/null\n' > /root/.vnc/xstartup; chmod +x /root/.vnc/xstartup; Xvnc :2 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5902 >/tmp/xvnc.log 2>&1 &; sleep 5; cat /tmp/xvnc.log; ps aux | grep Xvnc | grep -v grep; echo "=== If this works, update VNC connection to use port 5902 ==="
+
+# Step 4: Or try to force remove socket and restart :1
+rm -rf /tmp/.X11-unix; mkdir -p /tmp/.X11-unix; chmod 1777 /tmp/.X11-unix; rm -f /tmp/.X1-lock; killall -9 Xvnc 2>/dev/null; pkill -9 Xvnc 2>/dev/null; sleep 3; Xvnc :1 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5901 >/tmp/xvnc.log 2>&1 &; sleep 5; cat /tmp/xvnc.log; ps aux | grep Xvnc | grep -v grep; echo "=== Check OS tab ==="
+
+# ============================================
+# FINAL FIX: Use display :2 (port 5902) - This should work
+# ============================================
+# Complete cleanup and start on display :2
+rm -rf /tmp/.X11-unix; mkdir -p /tmp/.X11-unix; chmod 1777 /tmp/.X11-unix; rm -f /tmp/.X*-lock; killall -9 Xvnc 2>/dev/null; pkill -9 Xvnc 2>/dev/null; sleep 3; printf '#!/bin/bash\nexport DISPLAY=:2\nsleep 1\nxterm &\ntail -f /dev/null\n' > /root/.vnc/xstartup; chmod +x /root/.vnc/xstartup; Xvnc :2 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5902 >/tmp/xvnc.log 2>&1 &; sleep 5; echo "=== Xvnc Status (display :2, port 5902) ==="; cat /tmp/xvnc.log; ps aux | grep Xvnc | grep -v grep; echo "=== If this works, we need to update app to use port 5902 ==="
+
+# ============================================
+# COMPLETE DEBUG + FIX (fish-compatible):
+# ============================================
+# Step 1: Cleanup everything
+rm -f /tmp/.X1-lock; rm -rf /tmp/.X11-unix/X1; pkill -9 Xvnc 2>/dev/null; pkill -9 vncserver 2>/dev/null; sleep 3; echo "=== Cleanup done ==="
+
+# Step 2: Check what's using display :1
+echo "=== Checking for processes on display :1 ==="; ps aux | grep -E "Xvnc|vnc|:1" | grep -v grep || echo "No processes found"
+
+# Step 3: Create xstartup script (using cat with heredoc to avoid fish issues)
+cat > /root/.vnc/xstartup << 'XSTARTUP_EOF'
+#!/bin/bash
+unset SESSION_MANAGER
+unset DBUS_SESSION_BUS_ADDRESS
+export DISPLAY=:1
+export USER=root
+export HOME=/root
+
+echo "Xstartup script executing at $(date)" > /tmp/xstartup.log 2>&1
+
+[ -r $HOME/.Xresources ] && xrdb $HOME/.Xresources
+
+sleep 2
+
+if [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then
+    echo "Starting D-Bus session..." >> /tmp/xstartup.log 2>&1
+    if command -v dbus-daemon >/dev/null 2>&1; then
+        dbus-daemon --session --fork --print-address > /tmp/dbus-session-address 2>&1
+        export DBUS_SESSION_BUS_ADDRESS=$(cat /tmp/dbus-session-address 2>/dev/null | head -1)
+        echo "D-Bus started at: $DBUS_SESSION_BUS_ADDRESS" >> /tmp/xstartup.log 2>&1
+    else
+        eval $(dbus-launch --sh-syntax --exit-with-session) 2>>/tmp/xstartup.log
+        echo "D-Bus started via dbus-launch" >> /tmp/xstartup.log 2>&1
+    fi
+fi
+
+echo "Starting XFCE desktop..." >> /tmp/xstartup.log 2>&1
+if command -v startxfce4 >/dev/null 2>&1; then
+    echo "Using startxfce4 command" >> /tmp/xstartup.log 2>&1
+    startxfce4 >/tmp/xfce4.log 2>&1 &
+elif command -v xfce4-session >/dev/null 2>&1; then
+    echo "Using xfce4-session command" >> /tmp/xstartup.log 2>&1
+    xfce4-session >/tmp/xfce4.log 2>&1 &
+else
+    echo "Using individual XFCE components" >> /tmp/xstartup.log 2>&1
+    xfce4-panel >/tmp/xfce4.log 2>&1 &
+    xfdesktop >>/tmp/xfce4.log 2>&1 &
+fi
+
+echo "XFCE startup command executed" >> /tmp/xstartup.log 2>&1
+
+tail -f /dev/null
+XSTARTUP_EOF
+chmod +x /root/.vnc/xstartup; echo "=== xstartup created ==="
+
+# Step 4: Start Xvnc and check
+Xvnc :1 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5901 >/tmp/xvnc.log 2>&1 &; sleep 5; echo "=== Xvnc Log ==="; cat /tmp/xvnc.log; echo ""; echo "=== Process Check ==="; ps aux | grep Xvnc | grep -v grep; echo "=== Check OS tab ==="
+
+# ============================================
+# COMPLETE FIX + START (fish-compatible one-liner):
+# ============================================
+# Step 1: Cleanup + Create minimal xstartup + Start Xvnc
+rm -f /tmp/.X1-lock /tmp/.X11-unix/X1; pkill -9 Xvnc 2>/dev/null; pkill -9 vncserver 2>/dev/null; sleep 2; printf '#!/bin/bash\nexport DISPLAY=:1\nsleep 1\nxterm &\ntail -f /dev/null\n' > /root/.vnc/xstartup; chmod +x /root/.vnc/xstartup; Xvnc :1 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5901 >/tmp/xvnc.log 2>&1 &; sleep 3; echo "=== Xvnc Status ==="; cat /tmp/xvnc.log; ps aux | grep Xvnc | grep -v grep; echo "=== Check OS tab ==="
+
+# Step 2: Restart Xvnc with full XFCE xstartup (after you've updated xstartup)
+rm -f /tmp/.X1-lock; rm -f /tmp/.X*-lock; rm -rf /tmp/.X11-unix/X1; killall -9 Xvnc 2>/dev/null; pkill -9 Xvnc 2>/dev/null; sleep 3; Xvnc :1 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5901 >/tmp/xvnc.log 2>&1 &; sleep 5; echo "=== Xvnc Status ==="; cat /tmp/xvnc.log; echo ""; echo "=== Process Check ==="; ps aux | grep Xvnc | grep -v grep; echo ""; echo "=== XFCE Logs ==="; cat /tmp/xstartup.log 2>/dev/null | head -10; echo ""; cat /tmp/xfce4.log 2>/dev/null | head -10; echo "=== Check OS tab now ==="
+
+# ============================================
+# FIRST: Run these diagnostic commands to see why Xvnc is crashing
+# ============================================
+# Check Xvnc error log
+echo "=== Xvnc Error Log ===" && cat /tmp/xvnc.log 2>/dev/null || echo "No xvnc.log found"
+
+# Check if Xvnc binary exists
+echo "=== Xvnc Binary ===" && (command -v Xvnc && echo "Found: $(command -v Xvnc)" || echo "Xvnc NOT FOUND in PATH") && (which Xvnc 2>/dev/null && echo "which found: $(which Xvnc)" || echo "which: not found")
+
+# Check xstartup script
+echo "=== xstartup Script ===" && (test -f /root/.vnc/xstartup && echo "File exists" && bash -n /root/.vnc/xstartup && echo "Syntax: OK" || echo "Syntax: ERROR") || echo "File not found"
+
+# Try Xvnc with minimal options to see error
+echo "=== Testing Xvnc (will show error) ===" && Xvnc :1 -geometry 800x600 -depth 16 -SecurityTypes None -rfbport 5901 2>&1 | head -20 || echo "Xvnc test completed"
+
+# ONE-LINER DIAGNOSTIC (copy this - works with fish shell):
+echo "=== Xvnc Log ==="; cat /tmp/xvnc.log 2>/dev/null; echo ""; echo "=== Xvnc Binary ==="; command -v Xvnc; echo ""; echo "=== xstartup Check ==="; test -f /root/.vnc/xstartup; bash -n /root/.vnc/xstartup; echo "xstartup check done"
+
+# FISH-SHELL COMPATIBLE COMMANDS:
+# Step 1: Create minimal xstartup
+printf '#!/bin/bash\nexport DISPLAY=:1\nsleep 1\nxterm &\ntail -f /dev/null\n' > /root/.vnc/xstartup; chmod +x /root/.vnc/xstartup; echo "Created minimal xstartup"
+
+# Step 2: Kill old VNC
+pkill -f 'Xvnc :1' 2>/dev/null; pkill -f 'vncserver :1' 2>/dev/null; sleep 2
+
+# Step 3: Start VNC (fish doesn't like * wildcard, so use simpler logging)
+Xvnc :1 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5901 >/tmp/xvnc.log 2>&1 &
+sleep 3
+
+# Step 4: Check status (fish-compatible)
+echo "=== VNC Status ==="; cat /tmp/xvnc.log; echo ""; test -f /tmp/xvnc.log; echo "Log check done"
+
+# Step 5: Check if Xvnc is running (fish-compatible)
+echo "=== Process Check ==="; ps aux | grep Xvnc | grep -v grep || echo "Xvnc not found in ps"
+
+# Step 6: Try to see Xvnc error directly
+echo "=== Try Xvnc in foreground (Ctrl+C after 3 seconds) ==="; Xvnc :1 -geometry 800x600 -depth 16 -SecurityTypes None -rfbport 5901 2>&1
+
+# 1. Update xstartup script to fix D-Bus issues
+cat > /root/.vnc/xstartup << 'EOF'
+#!/bin/bash
+unset SESSION_MANAGER
+unset DBUS_SESSION_BUS_ADDRESS
+export DISPLAY=:1
+export USER=root
+export HOME=/root
+
+echo 'Xstartup script executing at $(date)' > /tmp/xstartup.log 2>&1
+
+# Load X resources if available
+[ -r $HOME/.Xresources ] && xrdb $HOME/.Xresources
+
+# Wait for X server to be ready
+sleep 2
+
+# Start D-Bus session daemon
+if [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then
+    echo 'Starting D-Bus session...' >> /tmp/xstartup.log 2>&1
+    if command -v dbus-daemon >/dev/null 2>&1; then
+        dbus-daemon --session --fork --print-address > /tmp/dbus-session-address 2>&1
+        export DBUS_SESSION_BUS_ADDRESS=$(cat /tmp/dbus-session-address 2>/dev/null | head -1)
+        echo "D-Bus started at: $DBUS_SESSION_BUS_ADDRESS" >> /tmp/xstartup.log 2>&1
+    else
+        eval $(dbus-launch --sh-syntax --exit-with-session) 2>>/tmp/xstartup.log
+        echo 'D-Bus started via dbus-launch' >> /tmp/xstartup.log 2>&1
+    fi
+fi
+
+# Start XFCE desktop environment
+echo 'Starting XFCE desktop...' >> /tmp/xstartup.log 2>&1
+if command -v startxfce4 >/dev/null 2>&1; then
+    echo 'Using startxfce4 command' >> /tmp/xstartup.log 2>&1
+    startxfce4 >/tmp/xfce4.log 2>&1 &
+elif command -v xfce4-session >/dev/null 2>&1; then
+    echo 'Using xfce4-session command' >> /tmp/xstartup.log 2>&1
+    xfce4-session >/tmp/xfce4.log 2>&1 &
+else
+    echo 'Using individual XFCE components' >> /tmp/xstartup.log 2>&1
+    xfce4-panel >/tmp/xfce4.log 2>&1 &
+    xfdesktop >>/tmp/xfce4.log 2>&1 &
+fi
+
+echo 'XFCE startup command executed' >> /tmp/xstartup.log 2>&1
+
+# Keep script running
+tail -f /dev/null
+EOF
+
+# 2. Make xstartup executable
+chmod +x /root/.vnc/xstartup
+
+# 3. Kill existing VNC server
+pkill -f 'Xvnc :1' 2>/dev/null || true
+pkill -f 'vncserver :1' 2>/dev/null || true
+sleep 2
+
+# 4. Start VNC server with Xvnc
+Xvnc :1 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5901 >/tmp/xvnc.log 2>&1 &
+
+# 5. Wait a few seconds for VNC to start
+sleep 5
+
+# 6. Check if VNC server is running
+echo "=== Checking VNC server status ==="
+ss -tlnp 2>/dev/null | grep 5901 || netstat -tlnp 2>/dev/null | grep 5901 || echo "Cannot check port (permission denied, but server may be running)"
+
+# 7. Check if Xvnc process is running
+pgrep -f 'Xvnc :1' && echo "Xvnc process is running" || echo "Xvnc process not found"
+
+# 8. Check xstartup log
+echo "=== xstartup.log ==="
+cat /tmp/xstartup.log 2>/dev/null || echo "No xstartup.log yet"
+
+# 9. Check xfce4 log
+echo "=== xfce4.log ==="
+cat /tmp/xfce4.log 2>/dev/null | head -20 || echo "No xfce4.log yet"
+
+# 10. Check Xvnc log
+echo "=== xvnc.log ==="
+cat /tmp/xvnc.log 2>/dev/null | head -20 || echo "No xvnc.log yet"
+
+# 11. Check if XFCE processes are running
+echo "=== XFCE processes ==="
+pgrep -f 'xfce|xfwm|xfdesktop|xfpanel' || echo "No XFCE processes found"
+
+# 12. Check D-Bus session
+echo "=== D-Bus session ==="
+echo "DBUS_SESSION_BUS_ADDRESS: $DBUS_SESSION_BUS_ADDRESS"
+cat /tmp/dbus-session-address 2>/dev/null || echo "No dbus-session-address file"
+
+# ============================================
+# ============================================
+# FISH-SHELL ONE-LINER - Copy and paste this:
+# ============================================
+printf '#!/bin/bash\nunset SESSION_MANAGER\nunset DBUS_SESSION_BUS_ADDRESS\nexport DISPLAY=:1\nexport USER=root\nexport HOME=/root\necho "Xstartup script executing at $(date)" > /tmp/xstartup.log 2>&1\n[ -r $HOME/.Xresources ] && xrdb $HOME/.Xresources\nsleep 2\nif [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then\n    echo "Starting D-Bus session..." >> /tmp/xstartup.log 2>&1\n    if command -v dbus-daemon >/dev/null 2>&1; then\n        dbus-daemon --session --fork --print-address > /tmp/dbus-session-address 2>&1\n        export DBUS_SESSION_BUS_ADDRESS=$(cat /tmp/dbus-session-address 2>/dev/null | head -1)\n        echo "D-Bus started at: $DBUS_SESSION_BUS_ADDRESS" >> /tmp/xstartup.log 2>&1\n    else\n        eval $(dbus-launch --sh-syntax --exit-with-session) 2>>/tmp/xstartup.log\n        echo "D-Bus started via dbus-launch" >> /tmp/xstartup.log 2>&1\n    fi\nfi\necho "Starting XFCE desktop..." >> /tmp/xstartup.log 2>&1\nif command -v startxfce4 >/dev/null 2>&1; then\n    echo "Using startxfce4 command" >> /tmp/xstartup.log 2>&1\n    startxfce4 >/tmp/xfce4.log 2>&1 &\nelif command -v xfce4-session >/dev/null 2>&1; then\n    echo "Using xfce4-session command" >> /tmp/xstartup.log 2>&1\n    xfce4-session >/tmp/xfce4.log 2>&1 &\nelse\n    echo "Using individual XFCE components" >> /tmp/xstartup.log 2>&1\n    xfce4-panel >/tmp/xfce4.log 2>&1 &\n    xfdesktop >>/tmp/xfce4.log 2>&1 &\nfi\necho "XFCE startup command executed" >> /tmp/xstartup.log 2>&1\ntail -f /dev/null\n' > /root/.vnc/xstartup; chmod +x /root/.vnc/xstartup; pkill -f 'Xvnc :1' 2>/dev/null; pkill -f 'vncserver :1' 2>/dev/null; sleep 2; Xvnc :1 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5901 >/tmp/xvnc.log 2>&1 &; sleep 5; echo "=== VNC Server Status ==="; cat /tmp/xvnc.log; ps aux | grep Xvnc | grep -v grep; echo "=== Check OS tab now ==="
+
+# ============================================
+# DIAGNOSTIC COMMANDS - Run these first to see what's wrong
+# ============================================
+# Check Xvnc log for errors
+echo "=== Xvnc Log ===" && cat /tmp/xvnc.log 2>/dev/null || echo "No xvnc.log found"
+
+# Check if Xvnc binary exists and is executable
+echo "=== Xvnc Binary Check ===" && (command -v Xvnc && echo "Xvnc found: $(command -v Xvnc)" || echo "Xvnc NOT FOUND") && (which Xvnc && file $(which Xvnc) || echo "Cannot check Xvnc file")
+
+# Check xstartup script syntax
+echo "=== xstartup Script Check ===" && (bash -n /root/.vnc/xstartup && echo "xstartup syntax: OK" || echo "xstartup syntax: ERROR") && ls -la /root/.vnc/xstartup 2>/dev/null || echo "xstartup file not found"
+
+# Try running Xvnc in foreground to see errors
+echo "=== Try Xvnc in foreground (will timeout after 3 seconds) ===" && timeout 3 Xvnc :1 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5901 2>&1 || echo "Xvnc foreground test completed"
+
+# ============================================
+# ALTERNATIVE: Step-by-step commands (easier to debug)
+# ============================================
+# Step 1: Create minimal xstartup (test if Xvnc can start)
+printf '#!/bin/bash\nexport DISPLAY=:1\nsleep 1\nxterm &\ntail -f /dev/null\n' > /root/.vnc/xstartup && chmod +x /root/.vnc/xstartup && echo "Created minimal xstartup"
+
+# Step 2: Kill old VNC
+pkill -f 'Xvnc :1' 2>/dev/null || true
+pkill -f 'vncserver :1' 2>/dev/null || true
+sleep 2
+
+# Step 3: Start VNC (fish-compatible, no wildcard in -Log)
+Xvnc :1 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5901 >/tmp/xvnc.log 2>&1 &
+sleep 3
+
+# Step 4: Check status (fish-compatible)
+echo "=== VNC Status ==="; cat /tmp/xvnc.log; echo ""; test -f /tmp/xvnc.log; echo "Log file check done"
+
+# Step 5: If Xvnc started, update to full xstartup
+printf '#!/bin/bash\nunset SESSION_MANAGER\nunset DBUS_SESSION_BUS_ADDRESS\nexport DISPLAY=:1\nexport USER=root\nexport HOME=/root\necho "Xstartup script executing at $(date)" > /tmp/xstartup.log 2>&1\n[ -r $HOME/.Xresources ] && xrdb $HOME/.Xresources\nsleep 2\nif [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then\n    echo "Starting D-Bus session..." >> /tmp/xstartup.log 2>&1\n    if command -v dbus-daemon >/dev/null 2>&1; then\n        dbus-daemon --session --fork --print-address > /tmp/dbus-session-address 2>&1\n        export DBUS_SESSION_BUS_ADDRESS=$(cat /tmp/dbus-session-address 2>/dev/null | head -1)\n        echo "D-Bus started at: $DBUS_SESSION_BUS_ADDRESS" >> /tmp/xstartup.log 2>&1\n    else\n        eval $(dbus-launch --sh-syntax --exit-with-session) 2>>/tmp/xstartup.log\n        echo "D-Bus started via dbus-launch" >> /tmp/xstartup.log 2>&1\n    fi\nfi\necho "Starting XFCE desktop..." >> /tmp/xstartup.log 2>&1\nif command -v startxfce4 >/dev/null 2>&1; then\n    echo "Using startxfce4 command" >> /tmp/xstartup.log 2>&1\n    startxfce4 >/tmp/xfce4.log 2>&1 &\nelif command -v xfce4-session >/dev/null 2>&1; then\n    echo "Using xfce4-session command" >> /tmp/xstartup.log 2>&1\n    xfce4-session >/tmp/xfce4.log 2>&1 &\nelse\n    echo "Using individual XFCE components" >> /tmp/xstartup.log 2>&1\n    xfce4-panel >/tmp/xfce4.log 2>&1 &\n    xfdesktop >>/tmp/xfce4.log 2>&1 &\nfi\necho "XFCE startup command executed" >> /tmp/xstartup.log 2>&1\ntail -f /dev/null\n' > /root/.vnc/xstartup && chmod +x /root/.vnc/xstartup && echo "Updated to full xstartup - restart Xvnc now"

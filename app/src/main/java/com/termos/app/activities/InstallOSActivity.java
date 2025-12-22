@@ -509,7 +509,7 @@ public class InstallOSActivity extends AppCompatActivity {
                 "#!/bin/bash\n" +
                 "unset SESSION_MANAGER\n" +
                 "unset DBUS_SESSION_BUS_ADDRESS\n" +
-                "export DISPLAY=:1\n" +
+                "export DISPLAY=:2\n" +
                 "export XDG_SESSION_TYPE=mir\n" +
                 "export MIR_SOCKET=/run/mir_socket\n" +
                 "[ -x /etc/vnc/xstartup ] && exec /etc/vnc/xstartup\n" +
@@ -526,7 +526,7 @@ public class InstallOSActivity extends AppCompatActivity {
                 "#!/bin/bash\n" +
                 "unset SESSION_MANAGER\n" +
                 "unset DBUS_SESSION_BUS_ADDRESS\n" +
-                "export DISPLAY=:1\n" +
+                "export DISPLAY=:2\n" +
                 "export USER=root\n" +
                 "export HOME=/root\n" +
                 "\n" +
@@ -587,7 +587,7 @@ public class InstallOSActivity extends AppCompatActivity {
                 "    cat > /usr/local/bin/start-vnc.sh << 'STARTEOF'\n" +
                 "#!/bin/bash\n" +
                 "set -e\n" +
-                "export DISPLAY=:1\n" +
+                "export DISPLAY=:2\n" +
                 "export USER=root\n" +
                 "export HOME=/root\n" +
                 "export XDG_SESSION_TYPE=mir\n" +
@@ -601,9 +601,9 @@ public class InstallOSActivity extends AppCompatActivity {
                 "\n" +
                 "# Start VNC server with Lomiri\n" +
                 "if command -v vncserver >/dev/null 2>&1; then\n" +
-                "    vncserver :1 -geometry 1280x720 -depth 24 -localhost no -SecurityTypes None -xstartup /root/.vnc/xstartup 2>/dev/null || true\n" +
+                "    vncserver :2 -geometry 1280x720 -depth 24 -localhost no -SecurityTypes None -xstartup /root/.vnc/xstartup 2>/dev/null || true\n" +
                 "elif command -v Xvnc >/dev/null 2>&1; then\n" +
-                "    Xvnc :1 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5901 &\n" +
+                "    Xvnc :2 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5902 &\n" +
                 "    sleep 2\n" +
                 "fi\n" +
                 "\n" +
@@ -613,7 +613,7 @@ public class InstallOSActivity extends AppCompatActivity {
                 "    cat > /usr/local/bin/start-vnc.sh << 'STARTEOF'\n" +
                 "#!/bin/bash\n" +
                 "set -e\n" +
-                "export DISPLAY=:1\n" +
+                "export DISPLAY=:2\n" +
                 "export USER=root\n" +
                 "export HOME=/root\n" +
                 "\n" +
@@ -641,7 +641,7 @@ public class InstallOSActivity extends AppCompatActivity {
                 "    # Use Xvnc directly (doesn't require hostname)\n" +
                 "    # Xvnc automatically uses ~/.vnc/xstartup when starting a display\n" +
                 "    echo 'Starting VNC server with Xvnc...'\n" +
-                "    Xvnc :1 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5901 >/tmp/xvnc.log 2>&1 &\n" +
+                "    Xvnc :2 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5902 >/tmp/xvnc.log 2>&1 &\n" +
                 "    XVNC_PID=$!\n" +
                 "    sleep 5\n" +
                 "    # Check if Xvnc is still running\n" +
@@ -653,18 +653,18 @@ public class InstallOSActivity extends AppCompatActivity {
                 "        # Fall back to vncserver or x11vnc\n" +
                 "        if command -v vncserver >/dev/null 2>&1; then\n" +
                 "            echo 'Trying vncserver as fallback...'\n" +
-                "            vncserver :1 -geometry 1280x720 -depth 24 -localhost no -SecurityTypes None -xstartup /root/.vnc/xstartup >/tmp/vncserver.log 2>&1 || true\n" +
+                "            vncserver :2 -geometry 1280x720 -depth 24 -localhost no -SecurityTypes None -xstartup /root/.vnc/xstartup >/tmp/vncserver.log 2>&1 || true\n" +
                 "        fi\n" +
                 "    fi\n" +
                 "elif command -v vncserver >/dev/null 2>&1; then\n" +
                 "    # Use vncserver command (may have hostname issues)\n" +
                 "    echo 'Starting VNC server with vncserver command...'\n" +
-                "    vncserver :1 -geometry 1280x720 -depth 24 -localhost no -SecurityTypes None -xstartup /root/.vnc/xstartup >/tmp/vncserver.log 2>&1 || {\n" +
+                "    vncserver :2 -geometry 1280x720 -depth 24 -localhost no -SecurityTypes None -xstartup /root/.vnc/xstartup >/tmp/vncserver.log 2>&1 || {\n" +
                 "        echo 'vncserver failed, checking logs...'\n" +
                 "        cat /tmp/vncserver.log 2>/dev/null || true\n" +
                 "        echo 'Trying Xvnc as fallback...'\n" +
                 "        if command -v Xvnc >/dev/null 2>&1; then\n" +
-                "            Xvnc :1 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5901 >/tmp/xvnc.log 2>&1 &\n" +
+                "            Xvnc :2 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5902 >/tmp/xvnc.log 2>&1 &\n" +
                 "            sleep 5\n" +
                 "        else\n" +
                 "            exit 1\n" +
@@ -675,7 +675,7 @@ public class InstallOSActivity extends AppCompatActivity {
                 "elif command -v Xvnc >/dev/null 2>&1; then\n" +
                 "    # Use Xvnc directly\n" +
                 "    echo 'Starting VNC server with Xvnc...'\n" +
-                "    Xvnc :1 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5901 >/tmp/xvnc.log 2>&1 &\n" +
+                "    Xvnc :2 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5902 >/tmp/xvnc.log 2>&1 &\n" +
                 "    sleep 5\n" +
                 "    echo 'VNC server started (Xvnc)'\n" +
                 "elif command -v x11vnc >/dev/null 2>&1; then\n" +
@@ -691,7 +691,7 @@ public class InstallOSActivity extends AppCompatActivity {
                 "        xfce4-session >/tmp/xfce4.log 2>&1 &\n" +
                 "    fi\n" +
                 "    sleep 3\n" +
-                "    x11vnc -display :1 -rfbport 5901 -nopw -forever -shared >/tmp/x11vnc.log 2>&1 &\n" +
+                "    x11vnc -display :2 -rfbport 5902 -nopw -forever -shared >/tmp/x11vnc.log 2>&1 &\n" +
                 "    echo 'VNC server started (x11vnc)'\n" +
                 "else\n" +
                 "    echo 'ERROR: No VNC server found (vncserver, Xvnc, or x11vnc)'\n" +
@@ -751,11 +751,11 @@ public class InstallOSActivity extends AppCompatActivity {
                 "mkdir -p /usr/local/bin\n" +
                 "cat > /usr/local/bin/start-vnc.sh << 'STARTEOF'\n" +
                 "#!/bin/sh\n" +
-                "export DISPLAY=:1\n" +
+                "export DISPLAY=:2\n" +
                 "Xvfb :1 -screen 0 1280x720x24 &\n" +
                 "sleep 2\n" +
-                "DISPLAY=:1 startxfce4 &\n" +
-                "x11vnc -display :1 -rfbport 5901 -nopw -forever -shared &\n" +
+                "DISPLAY=:2 startxfce4 &\n" +
+                "x11vnc -display :2 -rfbport 5902 -nopw -forever -shared &\n" +
                 "STARTEOF\n" +
                 "chmod +x /usr/local/bin/start-vnc.sh\n" +
                 "\n" +
@@ -838,7 +838,7 @@ public class InstallOSActivity extends AppCompatActivity {
                     xstartupScript = "#!/bin/bash\n" +
                         "unset SESSION_MANAGER\n" +
                         "unset DBUS_SESSION_BUS_ADDRESS\n" +
-                        "export DISPLAY=:1\n" +
+                        "export DISPLAY=:2\n" +
                         "[ -r $HOME/.Xresources ] && xrdb $HOME/.Xresources\n" +
                         "# Start D-Bus session\n" +
                         "eval $(dbus-launch --sh-syntax)\n" +

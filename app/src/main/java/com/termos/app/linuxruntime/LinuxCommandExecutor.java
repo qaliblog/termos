@@ -131,8 +131,8 @@ public class LinuxCommandExecutor {
                                       ServerCheckCallback callback) {
         // Try multiple methods to check if VNC is running
         // Check port, processes, or if VNC log files exist
-        executeCommand("(ss -ln 2>/dev/null | grep ':5901 ') || " +
-            "(netstat -ln 2>/dev/null | grep ':5901 ') || " +
+        executeCommand("(ss -ln 2>/dev/null | grep ':5902 ') || " +
+            "(netstat -ln 2>/dev/null | grep ':5902 ') || " +
             "(test -f /tmp/vncserver.log && echo 'vncserver_log_exists') || " +
             "(test -f /tmp/xvnc.log && echo 'xvnc_log_exists') || " +
             "(test -f /tmp/x11vnc.log && echo 'x11vnc_log_exists') || " +
@@ -145,7 +145,7 @@ public class LinuxCommandExecutor {
                 @Override
                 public void onSuccess(String output) {
                     boolean isRunning = output != null && 
-                        (output.contains("5901") || 
+                        (output.contains("5902") || 
                          output.contains("vncserver") || 
                          output.contains("xvnc") || 
                          output.contains("x11vnc") ||
