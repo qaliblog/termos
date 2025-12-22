@@ -180,7 +180,6 @@ public class InstallOSActivity extends AppCompatActivity {
                 try {
                     // Get the init-host script path (filesDir and localDir already defined above)
                     File localBinDir = new File(localDir, "bin");
-                    File localBinDir = new File(localDir, "bin");
                     
                     // Determine which init script to use
                     String initScriptName = isUbuntu ? "init-host-ubuntu" : "init-host";
