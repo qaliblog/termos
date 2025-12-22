@@ -15,10 +15,16 @@ import com.termux.shared.termux.extrakeys.ExtraKeysConstants;
 import com.termux.shared.termux.extrakeys.ExtraKeysInfo;
 import com.termux.shared.termux.settings.properties.TermuxPropertyConstants;
 import com.termux.shared.termux.settings.properties.TermuxSharedProperties;
+import android.os.Build;
+import android.view.KeyEvent;
 import com.termux.shared.termux.terminal.io.TerminalExtraKeys;
+import com.termux.shared.termux.extrakeys.ExtraKeysConstants;
+import com.termux.terminal.TerminalSession;
 import com.termux.view.TerminalView;
 
 import org.json.JSONException;
+
+import static com.termux.shared.termux.extrakeys.ExtraKeysConstants.PRIMARY_KEY_CODES_FOR_STRINGS;
 
 public class TermuxTerminalExtraKeys extends TerminalExtraKeys {
 
@@ -101,16 +107,42 @@ public class TermuxTerminalExtraKeys extends TerminalExtraKeys {
             if (terminalView != null && terminalView.mEmulator != null)
                 terminalView.mEmulator.toggleAutoScrollDisabled();
         } else {
-            // Only call super if we have a valid terminal view client to avoid NullPointerException
-            if (mTermuxTerminalViewClient != null && mTermuxTerminalViewClient.getActivity() != null) {
-                TerminalView terminalView = mTermuxTerminalViewClient.getActivity().getTerminalView();
-                if (terminalView != null) {
-                    super.onTerminalExtraKeyButtonClick(view, key, ctrlDown, altDown, shiftDown, fnDown);
-                } else {
-                    Logger.logError(LOG_TAG, "TerminalView is null, cannot handle key: " + key);
-                }
+            // Handle keys directly instead of calling super to avoid NullPointerException
+            // Get TerminalView from activity to ensure it's current
+            if (mTermuxTerminalViewClient == null || mTermuxTerminalViewClient.getActivity() == null) {
+                Logger.logError(LOG_TAG, "TerminalViewClient or Activity is null, cannot handle key: " + key);
+                return;
+            }
+            
+            TerminalView terminalView = mTermuxTerminalViewClient.getActivity().getTerminalView();
+            if (terminalView == null) {
+                Logger.logError(LOG_TAG, "TerminalView is null, cannot handle key: " + key);
+                return;
+            }
+            
+            // Handle key similar to parent class but with null checks
+            if (PRIMARY_KEY_CODES_FOR_STRINGS.containsKey(key)) {
+                Integer keyCode = PRIMARY_KEY_CODES_FOR_STRINGS.get(key);
+                if (keyCode == null) return;
+                int metaState = 0;
+                if (ctrlDown) metaState |= KeyEvent.META_CTRL_ON | KeyEvent.META_CTRL_LEFT_ON;
+                if (altDown) metaState |= KeyEvent.META_ALT_ON | KeyEvent.META_ALT_LEFT_ON;
+                if (shiftDown) metaState |= KeyEvent.META_SHIFT_ON | KeyEvent.META_SHIFT_LEFT_ON;
+                if (fnDown) metaState |= KeyEvent.META_FUNCTION_ON;
+
+                KeyEvent keyEvent = new KeyEvent(0, 0, KeyEvent.ACTION_UP, keyCode, 0, metaState);
+                terminalView.onKeyDown(keyCode, keyEvent);
             } else {
-                Logger.logError(LOG_TAG, "TerminalViewClient is null, cannot handle key: " + key);
+                // not a control char
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    key.codePoints().forEach(codePoint -> {
+                        terminalView.inputCodePoint(TerminalView.KEY_EVENT_SOURCE_VIRTUAL_KEYBOARD, codePoint, ctrlDown, altDown);
+                    });
+                } else {
+                    TerminalSession session = terminalView.getCurrentSession();
+                    if (session != null && key.length() > 0)
+                        session.write(key);
+                }
             }
         }
     }
