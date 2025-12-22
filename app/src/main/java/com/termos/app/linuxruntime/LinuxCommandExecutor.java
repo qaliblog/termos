@@ -125,19 +125,32 @@ public class LinuxCommandExecutor {
     
     /**
      * Check if a process/port is listening (for VNC server check).
-     * Uses netstat or ss command if available.
+     * Uses netstat or ss command if available, or checks for VNC processes.
      */
     public void checkVNCServerRunning(com.termux.terminal.TerminalSessionClient serviceClient,
                                       ServerCheckCallback callback) {
-        // Try to check if port 5901 is listening
-        // Also check if VNC processes are running
-        executeCommand("(netstat -ln 2>/dev/null | grep ':5901 ') || (ss -ln 2>/dev/null | grep ':5901 ') || (ps aux 2>/dev/null | grep -E '[X]vnc|[v]ncserver|[x]11vnc' | grep -v grep) || echo 'not_found'", 
+        // Try multiple methods to check if VNC is running
+        // Check port, processes, or if VNC log files exist
+        executeCommand("(ss -ln 2>/dev/null | grep ':5901 ') || " +
+            "(netstat -ln 2>/dev/null | grep ':5901 ') || " +
+            "(test -f /tmp/vncserver.log && echo 'vncserver_log_exists') || " +
+            "(test -f /tmp/xvnc.log && echo 'xvnc_log_exists') || " +
+            "(test -f /tmp/x11vnc.log && echo 'x11vnc_log_exists') || " +
+            "(pgrep -f '[X]vnc' >/dev/null 2>&1 && echo 'xvnc_process') || " +
+            "(pgrep -f '[v]ncserver' >/dev/null 2>&1 && echo 'vncserver_process') || " +
+            "(pgrep -f '[x]11vnc' >/dev/null 2>&1 && echo 'x11vnc_process') || " +
+            "echo 'not_found'", 
             serviceClient,
             new CommandCallback() {
                 @Override
                 public void onSuccess(String output) {
                     boolean isRunning = output != null && 
-                        (output.contains("5901") || output.contains("Xvnc") || output.contains("vncserver") || output.contains("x11vnc")) && 
+                        (output.contains("5901") || 
+                         output.contains("vncserver") || 
+                         output.contains("xvnc") || 
+                         output.contains("x11vnc") ||
+                         output.contains("_log_exists") ||
+                         output.contains("_process")) && 
                         !output.contains("not_found");
                     Log.d(TAG, "VNC server check result: " + output + " (isRunning: " + isRunning + ")");
                     callback.onResult(isRunning);
@@ -169,21 +182,46 @@ public class LinuxCommandExecutor {
                     Log.d(TAG, "Starting VNC server...");
                     String vncCommand = runtimeManager.getVNCStartCommand();
                     Log.d(TAG, "Executing VNC command: " + vncCommand);
-                    executeCommand(vncCommand, serviceClient, new CommandCallback() {
+                    
+                    // Execute VNC startup command
+                    // Use bash explicitly and ensure script is executable
+                    String fullCommand = "bash " + vncCommand + " 2>&1";
+                    Log.d(TAG, "Full VNC command: " + fullCommand);
+                    
+                    executeCommand(fullCommand, serviceClient, new CommandCallback() {
                         @Override
                         public void onSuccess(String output) {
                             Log.d(TAG, "VNC server start output: " + output);
-                            if (callback != null) {
-                                callback.onSuccess(output);
-                            }
+                            // Wait a bit for server to fully start
+                            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                                if (callback != null) {
+                                    callback.onSuccess(output);
+                                }
+                            }, 3000);
                         }
                         
                         @Override
                         public void onError(String error) {
                             Log.e(TAG, "VNC server start error: " + error);
-                            if (callback != null) {
-                                callback.onError(error);
-                            }
+                            // Check if server started despite error (might have started in background)
+                            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                                checkVNCServerRunning(serviceClient, new ServerCheckCallback() {
+                                    @Override
+                                    public void onResult(boolean isRunning) {
+                                        if (isRunning) {
+                                            Log.d(TAG, "VNC server is running despite error message");
+                                            if (callback != null) {
+                                                callback.onSuccess("VNC server started");
+                                            }
+                                        } else {
+                                            Log.e(TAG, "VNC server not running: " + error);
+                                            if (callback != null) {
+                                                callback.onError(error);
+                                            }
+                                        }
+                                    }
+                                });
+                            }, 5000);
                         }
                     });
                 }
