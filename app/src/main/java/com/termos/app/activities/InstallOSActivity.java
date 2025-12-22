@@ -209,14 +209,16 @@ public class InstallOSActivity extends AppCompatActivity {
                         }
                     }
                     
-                    // Verify proot exists (required by init-host script)
+                    // Verify proot and libtalloc exist (required by init-host script)
                     // init-host expects proot at $PREFIX/local/bin/proot
                     File prootFile = new File(localBinDir, "proot");
+                    File libtallocFile = new File(filesDir, "libtalloc.so.2");
+                    File localLibDir = new File(localDir, "lib");
+                    
+                    // Check and copy proot if needed
                     if (!prootFile.exists()) {
-                        // Check if proot is in files directory (where RootfsDownloader puts it)
                         File prootInFiles = new File(filesDir, "proot");
                         if (prootInFiles.exists()) {
-                            // Copy proot to local/bin
                             try {
                                 prootFile.getParentFile().mkdirs();
                                 java.nio.file.Files.copy(prootInFiles.toPath(), prootFile.toPath(), 
@@ -233,8 +235,26 @@ public class InstallOSActivity extends AppCompatActivity {
                             errorMessage = "Proot binary not found. Please ensure rootfs is properly installed.";
                             return false;
                         }
-                    } else {
-                        Log.d(TAG, "Proot found at: " + prootFile.getAbsolutePath());
+                    }
+                    
+                    // Check and copy libtalloc.so.2 if needed
+                    if (!libtallocFile.exists()) {
+                        Log.e(TAG, "libtalloc.so.2 not found at: " + libtallocFile.getAbsolutePath());
+                        errorMessage = "libtalloc.so.2 not found. Please ensure rootfs is properly installed.";
+                        return false;
+                    }
+                    
+                    // Copy libtalloc to local/lib if not there (for LD_LIBRARY_PATH)
+                    File libtallocInLocal = new File(localLibDir, "libtalloc.so.2");
+                    if (!libtallocInLocal.exists()) {
+                        try {
+                            localLibDir.mkdirs();
+                            java.nio.file.Files.copy(libtallocFile.toPath(), libtallocInLocal.toPath(), 
+                                java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                            Log.d(TAG, "Copied libtalloc.so.2 to: " + libtallocInLocal.getAbsolutePath());
+                        } catch (Exception e) {
+                            Log.w(TAG, "Failed to copy libtalloc.so.2 to local/lib, will use files dir in LD_LIBRARY_PATH", e);
+                        }
                     }
                     
                     // Command to execute within rootfs
@@ -273,11 +293,46 @@ public class InstallOSActivity extends AppCompatActivity {
                     IShellEnvironment shellEnvironment = new TermuxShellEnvironment();
                     
                     // Set environment variables for rootfs detection (required by init-host script)
+                    // These must match what TerminalSession sets up
                     java.util.HashMap<String, String> additionalEnvironment = new java.util.HashMap<>();
                     additionalEnvironment.put("ROOTFS_FILE", rootfsFileName);
                     additionalEnvironment.put("ROOTFS_DIR", rootfsDirName);
-                    // Add PREFIX for init-host script
                     additionalEnvironment.put("PREFIX", filesDir.getParentFile().getAbsolutePath());
+                    
+                    // Set PATH to include system binaries and local bin
+                    String systemPath = System.getenv("PATH");
+                    if (systemPath == null) systemPath = "";
+                    String path = systemPath + ":/sbin:" + localBinDir.getAbsolutePath();
+                    additionalEnvironment.put("PATH", path);
+                    
+                    // Set LD_LIBRARY_PATH to include libtalloc.so.2 location
+                    // Include both filesDir (where libtalloc might be) and localLibDir
+                    String ldLibraryPath = filesDir.getAbsolutePath();
+                    File localLibDir = new File(localDir, "lib");
+                    if (localLibDir.exists()) {
+                        ldLibraryPath = ldLibraryPath + ":" + localLibDir.getAbsolutePath();
+                    }
+                    additionalEnvironment.put("LD_LIBRARY_PATH", ldLibraryPath);
+                    
+                    // Set other required environment variables
+                    additionalEnvironment.put("HOME", "/sdcard");
+                    additionalEnvironment.put("TERM", "xterm-256color");
+                    additionalEnvironment.put("LANG", "C.UTF-8");
+                    additionalEnvironment.put("BIN", localBinDir.getAbsolutePath());
+                    
+                    // Set linker path
+                    File linker64 = new File("/system/bin/linker64");
+                    String linker = linker64.exists() ? "/system/bin/linker64" : "/system/bin/linker";
+                    additionalEnvironment.put("LINKER", linker);
+                    
+                    // Set PROOT_TMP_DIR
+                    File tempDir = new File(InstallOSActivity.this.getCacheDir(), "termos_temp");
+                    tempDir.mkdirs();
+                    additionalEnvironment.put("PROOT_TMP_DIR", tempDir.getAbsolutePath());
+                    additionalEnvironment.put("TMPDIR", tempDir.getAbsolutePath());
+                    
+                    Log.d(TAG, "Environment: PATH=" + path);
+                    Log.d(TAG, "Environment: LD_LIBRARY_PATH=" + ldLibraryPath);
                     
                     AppShell.AppShellClient appShellClient = new AppShell.AppShellClient() {
                         @Override
