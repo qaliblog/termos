@@ -598,11 +598,13 @@ public class InstallOSActivity extends AppCompatActivity {
                 "export USER=root\n" +
                 "export HOME=/root\n" +
                 "\n" +
+                "echo '=== Starting VNC Server ==='\n" +
+                "\n" +
                 "# Kill existing VNC server if running\n" +
-                "pkill -f 'vncserver :1' || true\n" +
-                "pkill -f 'Xvnc :1' || true\n" +
-                "pkill -f 'x11vnc.*:1' || true\n" +
-                "sleep 1\n" +
+                "pkill -f 'vncserver :1' 2>/dev/null || true\n" +
+                "pkill -f 'Xvnc :1' 2>/dev/null || true\n" +
+                "pkill -f 'x11vnc.*:1' 2>/dev/null || true\n" +
+                "sleep 2\n" +
                 "\n" +
                 "# Start VNC server\n" +
                 "if command -v vncserver >/dev/null 2>&1; then\n" +
@@ -638,20 +640,34 @@ public class InstallOSActivity extends AppCompatActivity {
                 "    echo 'VNC server started (x11vnc)'\n" +
                 "else\n" +
                 "    echo 'ERROR: No VNC server found (vncserver, Xvnc, or x11vnc)'\n" +
+                "    echo 'Available commands:'\n" +
+                "    which vncserver Xvnc x11vnc 2>/dev/null || echo 'None found'\n" +
                 "    exit 1\n" +
                 "fi\n" +
                 "\n" +
                 "# Verify VNC server is running\n" +
-                "sleep 2\n" +
-                "if netstat -ln 2>/dev/null | grep -q ':5901 ' || ss -ln 2>/dev/null | grep -q ':5901 '; then\n" +
-                "    echo 'VNC server verified on port 5901'\n" +
+                "sleep 3\n" +
+                "echo 'Checking if VNC server is listening...'\n" +
+                "if command -v ss >/dev/null 2>&1; then\n" +
+                "    if ss -ln 2>/dev/null | grep -q ':5901 '; then\n" +
+                "        echo 'VNC server verified on port 5901'\n" +
+                "    else\n" +
+                "        echo 'WARNING: VNC server may not be listening on port 5901'\n" +
+                "    fi\n" +
+                "elif command -v netstat >/dev/null 2>&1; then\n" +
+                "    if netstat -ln 2>/dev/null | grep -q ':5901 '; then\n" +
+                "        echo 'VNC server verified on port 5901'\n" +
+                "    else\n" +
+                "        echo 'WARNING: VNC server may not be listening on port 5901'\n" +
+                "    fi\n" +
                 "else\n" +
-                "    echo 'WARNING: VNC server may not be listening on port 5901'\n" +
-                "    echo 'Check logs in /tmp/ for errors'\n" +
+                "    echo 'Cannot verify VNC server (ss and netstat not available)'\n" +
                 "fi\n" +
                 "\n" +
-                "echo 'VNC server started on display :1, port 5901 (XFCE)'\n" +
+                "echo '=== VNC Server Startup Complete ==='\n" +
+                "echo 'VNC server should be running on display :1, port 5901 (XFCE)'\n" +
                 "echo 'Check /tmp/xfce4.log for desktop startup logs'\n" +
+                "echo 'Check /tmp/vncserver.log or /tmp/xvnc.log for VNC server logs'\n" +
                 "STARTEOF\n" +
                 "fi\n" +
                 "chmod +x /usr/local/bin/start-vnc.sh\n" +
