@@ -23,6 +23,8 @@ import com.termux.shared.shell.command.runner.app.AppShell;
 import com.termux.shared.shell.command.environment.IShellEnvironment;
 import com.termux.shared.termux.shell.command.environment.TermuxShellEnvironment;
 
+import java.io.File;
+
 /**
  * Activity to install desktop environment and VNC server for OS tab.
  * Installs Lomiri desktop environment (Ubuntu Touch's desktop) and sets up VNC server.
