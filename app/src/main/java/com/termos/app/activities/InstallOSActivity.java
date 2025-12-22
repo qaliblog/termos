@@ -542,18 +542,24 @@ public class InstallOSActivity extends AppCompatActivity {
                 "fi\n" +
                 "\n" +
                 "# Start XFCE desktop environment\n" +
+                "echo 'Starting XFCE desktop...' >> /tmp/xstartup.log\n" +
                 "if command -v startxfce4 >/dev/null 2>&1; then\n" +
+                "    echo 'Using startxfce4 command' >> /tmp/xstartup.log\n" +
                 "    startxfce4 >/tmp/xfce4.log 2>&1 &\n" +
                 "elif command -v xfce4-session >/dev/null 2>&1; then\n" +
+                "    echo 'Using xfce4-session command' >> /tmp/xstartup.log\n" +
                 "    xfce4-session >/tmp/xfce4.log 2>&1 &\n" +
                 "else\n" +
+                "    echo 'Using individual XFCE components' >> /tmp/xstartup.log\n" +
                 "    # Fallback: start basic XFCE components\n" +
                 "    xfce4-panel >/tmp/xfce4.log 2>&1 &\n" +
-                "    xfdesktop >/tmp/xfce4.log 2>&1 &\n" +
+                "    xfdesktop >>/tmp/xfce4.log 2>&1 &\n" +
                 "fi\n" +
                 "\n" +
-                "# Keep script running\n" +
-                "wait\n" +
+                "echo 'XFCE startup completed' >> /tmp/xstartup.log\n" +
+                "\n" +
+                "# Keep script running (Xvnc expects xstartup to stay alive)\n" +
+                "exec bash\n" +
                 "VNCEOF\n" +
                 "fi\n" +
                 "chmod +x /root/.vnc/xstartup\n" +
