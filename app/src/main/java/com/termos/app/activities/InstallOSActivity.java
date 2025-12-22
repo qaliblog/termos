@@ -530,7 +530,7 @@ public class InstallOSActivity extends AppCompatActivity {
                 "export USER=root\n" +
                 "export HOME=/root\n" +
                 "\n" +
-                "echo 'Xstartup script executing at $(date)' > /tmp/xstartup.log 2>&1\n" +
+                "echo \"Xstartup script executing at $(date)\" > /tmp/xstartup.log 2>&1\n" +
                 "\n" +
                 "# Load X resources if available\n" +
                 "[ -r $HOME/.Xresources ] && xrdb $HOME/.Xresources\n" +
@@ -680,6 +680,20 @@ public class InstallOSActivity extends AppCompatActivity {
                 "                echo \"display:${DISPLAY_NUM}\" > /tmp/vnc-display.txt\n" +
                 "                echo \"port:${PORT}\" >> /tmp/vnc-display.txt\n" +
                 "                echo \"VNC display info saved to /tmp/vnc-display.txt\"\n" +
+                "                \n" +
+                "                # Wait a bit more for Xvnc to fully initialize\n" +
+                "                sleep 2\n" +
+                "                \n" +
+                "                # Manually trigger xstartup if it hasn't run (Xvnc should do this automatically, but sometimes doesn't)\n" +
+                "                if [ ! -f /tmp/xstartup.log ] || [ ! -s /tmp/xstartup.log ]; then\n" +
+                "                    echo \"Manually triggering xstartup script...\"\n" +
+                "                    export DISPLAY=:${DISPLAY_NUM}\n" +
+                "                    if [ -x /root/.vnc/xstartup ]; then\n" +
+                "                        /root/.vnc/xstartup >/tmp/xstartup-manual.log 2>&1 &\n" +
+                "                        echo \"xstartup triggered manually\"\n" +
+                "                    fi\n" +
+                "                fi\n" +
+                "                \n" +
                 "                return 0\n" +
                 "            fi\n" +
                 "        fi\n" +

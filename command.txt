@@ -2,6 +2,36 @@
 # Copy and paste these commands one by one into termos terminal
 
 # ============================================
+# DEBUG: Check why desktop isn't showing (run these after VNC starts)
+# ============================================
+# Check VNC display info
+echo "=== VNC Display Info ==="; cat /tmp/vnc-display.txt 2>/dev/null || echo "No vnc-display.txt"
+
+# Check xstartup log
+echo "=== xstartup.log ==="; cat /tmp/xstartup.log 2>/dev/null || echo "No xstartup.log (xstartup may not have run)"
+
+# Check XFCE log
+echo "=== xfce4.log ==="; cat /tmp/xfce4.log 2>/dev/null | head -30 || echo "No xfce4.log"
+
+# Check Xvnc log for display :1
+echo "=== Xvnc log (display :1) ==="; cat /tmp/xvnc-1.log 2>/dev/null | head -30 || echo "No xvnc-1.log"
+
+# Check if xstartup script exists and is executable
+echo "=== xstartup script ==="; ls -la /root/.vnc/xstartup 2>/dev/null || echo "xstartup not found"; echo ""; head -10 /root/.vnc/xstartup 2>/dev/null || echo "Cannot read xstartup"
+
+# Check if XFCE processes are running
+echo "=== XFCE Processes ==="; ps aux | grep -E "xfce|xfwm|xfdesktop|xfpanel|startxfce" | grep -v grep || echo "No XFCE processes"
+
+# Check if X server is running
+echo "=== X Server Process ==="; ps aux | grep -E "Xvnc.*:1" | grep -v grep || echo "No Xvnc :1 process"
+
+# Check D-Bus
+echo "=== D-Bus Session ==="; cat /tmp/dbus-session-address 2>/dev/null || echo "No dbus-session-address"; echo "DBUS_SESSION_BUS_ADDRESS: $DBUS_SESSION_BUS_ADDRESS"
+
+# ONE-LINER DEBUG (copy this):
+echo "=== VNC Info ==="; cat /tmp/vnc-display.txt 2>/dev/null; echo ""; echo "=== xstartup.log ==="; cat /tmp/xstartup.log 2>/dev/null | head -20; echo ""; echo "=== xfce4.log ==="; cat /tmp/xfce4.log 2>/dev/null | head -20; echo ""; echo "=== Xvnc log ==="; cat /tmp/xvnc-1.log 2>/dev/null | head -20; echo ""; echo "=== XFCE Processes ==="; ps aux | grep -E "xfce|xfwm|xfdesktop" | grep -v grep; echo ""; echo "=== xstartup script ==="; head -15 /root/.vnc/xstartup 2>/dev/null
+
+# ============================================
 # FIX: Remove X lock file and kill processes (run this first if Xvnc says "already active")
 # ============================================
 # Remove lock file and kill all VNC processes
