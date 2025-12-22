@@ -751,27 +751,14 @@ public class InstallOSActivity extends AppCompatActivity {
                 "apk update\n" +
                 "\n" +
                 "# Install XFCE and VNC\n" +
-                "apk add xfce4 xfce4-terminal x11vnc dbus\n" +
+                "apk add xfce4 xfce4-terminal tigervnc dbus\n" +
                 "\n" +
                 "# Create VNC startup script\n" +
                 "mkdir -p /root/.vnc\n" +
-                "cat > /root/.vnc/xstartup << 'VNCEOF'\n" +
-                "#!/bin/sh\n" +
-                "startxfce4\n" +
-                "VNCEOF\n" +
-                "chmod +x /root/.vnc/xstartup\n" +
+                "# xstartup will be created by the main installation script\n" +
                 "\n" +
-                "# Create VNC startup script\n" +
-                "mkdir -p /usr/local/bin\n" +
-                "cat > /usr/local/bin/start-vnc.sh << 'STARTEOF'\n" +
-                "#!/bin/sh\n" +
-                "export DISPLAY=${DISPLAY:-:1}\n" +
-                "Xvfb :1 -screen 0 1280x720x24 &\n" +
-                "sleep 2\n" +
-                "DISPLAY=:2 startxfce4 &\n" +
-                "x11vnc -display :2 -rfbport 5902 -nopw -forever -shared &\n" +
-                "STARTEOF\n" +
-                "chmod +x /usr/local/bin/start-vnc.sh\n" +
+                "# Note: start-vnc.sh is created by the main installation script\n" +
+                "# which uses Xvnc (TigerVNC) that includes both X server and VNC\n" +
                 "\n" +
                 "echo 'Installation complete!'\n";
         }
