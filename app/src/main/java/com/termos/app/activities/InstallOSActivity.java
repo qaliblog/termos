@@ -530,36 +530,49 @@ public class InstallOSActivity extends AppCompatActivity {
                 "export USER=root\n" +
                 "export HOME=/root\n" +
                 "\n" +
+                "echo 'Xstartup script executing at $(date)' > /tmp/xstartup.log 2>&1\n" +
+                "\n" +
                 "# Load X resources if available\n" +
                 "[ -r $HOME/.Xresources ] && xrdb $HOME/.Xresources\n" +
                 "\n" +
                 "# Wait for X server to be ready\n" +
-                "sleep 1\n" +
+                "sleep 2\n" +
                 "\n" +
-                "# Start D-Bus session\n" +
+                "# Start D-Bus session daemon\n" +
                 "if [ -z \"$DBUS_SESSION_BUS_ADDRESS\" ]; then\n" +
-                "    eval $(dbus-launch --sh-syntax --exit-with-session)\n" +
+                "    echo 'Starting D-Bus session...' >> /tmp/xstartup.log 2>&1\n" +
+                "    # Start dbus-daemon directly instead of dbus-launch to avoid shm-helper errors\n" +
+                "    if command -v dbus-daemon >/dev/null 2>&1; then\n" +
+                "        dbus-daemon --session --fork --print-address > /tmp/dbus-session-address 2>&1\n" +
+                "        export DBUS_SESSION_BUS_ADDRESS=$(cat /tmp/dbus-session-address 2>/dev/null | head -1)\n" +
+                "        echo 'D-Bus started at: $DBUS_SESSION_BUS_ADDRESS' >> /tmp/xstartup.log 2>&1\n" +
+                "    else\n" +
+                "        # Fallback to dbus-launch if dbus-daemon not available\n" +
+                "        eval $(dbus-launch --sh-syntax --exit-with-session) 2>>/tmp/xstartup.log\n" +
+                "        echo 'D-Bus started via dbus-launch' >> /tmp/xstartup.log 2>&1\n" +
+                "    fi\n" +
                 "fi\n" +
                 "\n" +
                 "# Start XFCE desktop environment\n" +
-                "echo 'Starting XFCE desktop...' >> /tmp/xstartup.log\n" +
+                "echo 'Starting XFCE desktop...' >> /tmp/xstartup.log 2>&1\n" +
                 "if command -v startxfce4 >/dev/null 2>&1; then\n" +
-                "    echo 'Using startxfce4 command' >> /tmp/xstartup.log\n" +
+                "    echo 'Using startxfce4 command' >> /tmp/xstartup.log 2>&1\n" +
                 "    startxfce4 >/tmp/xfce4.log 2>&1 &\n" +
                 "elif command -v xfce4-session >/dev/null 2>&1; then\n" +
-                "    echo 'Using xfce4-session command' >> /tmp/xstartup.log\n" +
+                "    echo 'Using xfce4-session command' >> /tmp/xstartup.log 2>&1\n" +
                 "    xfce4-session >/tmp/xfce4.log 2>&1 &\n" +
                 "else\n" +
-                "    echo 'Using individual XFCE components' >> /tmp/xstartup.log\n" +
+                "    echo 'Using individual XFCE components' >> /tmp/xstartup.log 2>&1\n" +
                 "    # Fallback: start basic XFCE components\n" +
                 "    xfce4-panel >/tmp/xfce4.log 2>&1 &\n" +
                 "    xfdesktop >>/tmp/xfce4.log 2>&1 &\n" +
                 "fi\n" +
                 "\n" +
-                "echo 'XFCE startup completed' >> /tmp/xstartup.log\n" +
+                "echo 'XFCE startup command executed' >> /tmp/xstartup.log 2>&1\n" +
                 "\n" +
                 "# Keep script running (Xvnc expects xstartup to stay alive)\n" +
-                "exec bash\n" +
+                "# Use tail -f to keep process alive instead of exec bash\n" +
+                "tail -f /dev/null\n" +
                 "VNCEOF\n" +
                 "fi\n" +
                 "chmod +x /root/.vnc/xstartup\n" +
