@@ -178,25 +178,108 @@ public class InstallOSActivity extends AppCompatActivity {
                 
                 // Execute using AppShell - the command will run within rootfs via init-host script
                 try {
+                    // Get the init-host script path
+                    File filesDir = InstallOSActivity.this.getFilesDir();
+                    File localDir = new File(filesDir.getParentFile(), "local");
+                    File localBinDir = new File(localDir, "bin");
+                    
+                    // Determine which init script to use
+                    String initScriptName = isUbuntu ? "init-host-ubuntu" : "init-host";
+                    File initScriptFile = new File(localBinDir, initScriptName);
+                    
+                    // If init script doesn't exist, try to create it from assets
+                    if (!initScriptFile.exists()) {
+                        try {
+                            initScriptFile.getParentFile().mkdirs();
+                            android.content.res.AssetManager assets = InstallOSActivity.this.getAssets();
+                            String assetName = isUbuntu ? "init-host-ubuntu.sh" : "init-host.sh";
+                            java.io.InputStream in = assets.open(assetName);
+                            java.io.OutputStream out = new java.io.FileOutputStream(initScriptFile);
+                            byte[] buffer = new byte[8192];
+                            int bytesRead;
+                            while ((bytesRead = in.read(buffer)) != -1) {
+                                out.write(buffer, 0, bytesRead);
+                            }
+                            in.close();
+                            out.close();
+                            initScriptFile.setExecutable(true);
+                            Log.d(TAG, "Created init script: " + initScriptFile.getAbsolutePath());
+                        } catch (Exception e) {
+                            Log.e(TAG, "Failed to create init script", e);
+                            errorMessage = "Failed to create init script: " + e.getMessage();
+                            return false;
+                        }
+                    }
+                    
+                    // Verify proot exists (required by init-host script)
+                    // init-host expects proot at $PREFIX/local/bin/proot
+                    File prootFile = new File(localBinDir, "proot");
+                    if (!prootFile.exists()) {
+                        // Check if proot is in files directory (where RootfsDownloader puts it)
+                        File prootInFiles = new File(filesDir, "proot");
+                        if (prootInFiles.exists()) {
+                            // Copy proot to local/bin
+                            try {
+                                prootFile.getParentFile().mkdirs();
+                                java.nio.file.Files.copy(prootInFiles.toPath(), prootFile.toPath(), 
+                                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                                prootFile.setExecutable(true);
+                                Log.d(TAG, "Copied proot to: " + prootFile.getAbsolutePath());
+                            } catch (Exception e) {
+                                Log.e(TAG, "Failed to copy proot", e);
+                                errorMessage = "Proot binary not found. Please ensure rootfs is properly installed.";
+                                return false;
+                            }
+                        } else {
+                            Log.e(TAG, "Proot not found at: " + prootFile.getAbsolutePath() + " or " + prootInFiles.getAbsolutePath());
+                            errorMessage = "Proot binary not found. Please ensure rootfs is properly installed.";
+                            return false;
+                        }
+                    } else {
+                        Log.d(TAG, "Proot found at: " + prootFile.getAbsolutePath());
+                    }
+                    
                     // Command to execute within rootfs
-                    String command = "/root/install-os.sh";
+                    // The init-host script expects arguments that will be passed to the shell inside rootfs
+                    // We'll call it with -c and our script path
+                    String shellCommand;
+                    String[] shellArgs;
+                    
+                    if (initScriptFile.exists() && initScriptFile.canExecute()) {
+                        // Use init-host script which will set up proot and execute the command
+                        // The init-host script will pass arguments to /bin/init inside rootfs
+                        shellCommand = initScriptFile.getAbsolutePath();
+                        shellArgs = new String[]{"-c", "/root/install-os.sh"};
+                        Log.d(TAG, "Using init-host script: " + shellCommand);
+                    } else {
+                        // Fallback: use /bin/sh directly (won't work in rootfs, but might help debug)
+                        Log.w(TAG, "Init script not found or not executable, using /bin/sh fallback");
+                        shellCommand = "/bin/sh";
+                        shellArgs = new String[]{"-c", "/root/install-os.sh"};
+                    }
                     
                     ExecutionCommand executionCommand = new ExecutionCommand(
                         -1, // id
-                        "/bin/sh",
-                        new String[]{"-c", command},
+                        shellCommand,
+                        shellArgs,
                         null, // stdin
-                        "/root", // working directory
+                        filesDir.getParentFile().getAbsolutePath(), // working directory (PREFIX)
                         ExecutionCommand.Runner.APP_SHELL.getName(),
                         false // not failsafe
                     );
                     
+                    Log.d(TAG, "ExecutionCommand: executable=" + executionCommand.executable + 
+                          ", args=" + java.util.Arrays.toString(executionCommand.arguments) +
+                          ", workingDir=" + executionCommand.workingDirectory);
+                    
                     IShellEnvironment shellEnvironment = new TermuxShellEnvironment();
                     
-                    // Set environment variables for rootfs detection
+                    // Set environment variables for rootfs detection (required by init-host script)
                     java.util.HashMap<String, String> additionalEnvironment = new java.util.HashMap<>();
                     additionalEnvironment.put("ROOTFS_FILE", rootfsFileName);
                     additionalEnvironment.put("ROOTFS_DIR", rootfsDirName);
+                    // Add PREFIX for init-host script
+                    additionalEnvironment.put("PREFIX", filesDir.getParentFile().getAbsolutePath());
                     
                     AppShell.AppShellClient appShellClient = new AppShell.AppShellClient() {
                         @Override
