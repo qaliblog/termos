@@ -600,11 +600,15 @@ public class InstallOSActivity extends AppCompatActivity {
                 "\n" +
                 "echo '=== Starting VNC Server ==='\n" +
                 "\n" +
-                "# Set hostname to avoid vncserver hostname errors\n" +
+                "# Set up hostname and /etc/hosts to avoid vncserver hostname errors\n" +
                 "if ! hostname >/dev/null 2>&1 || [ -z \"$(hostname 2>/dev/null)\" ]; then\n" +
                 "    echo 'localhost' > /etc/hostname 2>/dev/null || true\n" +
                 "    hostname localhost 2>/dev/null || true\n" +
-                "    export HOSTNAME=localhost\n" +
+                "fi\n" +
+                "export HOSTNAME=localhost\n" +
+                "# Ensure /etc/hosts has localhost entry\n" +
+                "if ! grep -q '^127.0.0.1.*localhost' /etc/hosts 2>/dev/null; then\n" +
+                "    echo '127.0.0.1 localhost' >> /etc/hosts 2>/dev/null || true\n" +
                 "fi\n" +
                 "\n" +
                 "# Kill existing VNC server if running\n" +
@@ -613,17 +617,36 @@ public class InstallOSActivity extends AppCompatActivity {
                 "pkill -f 'x11vnc.*:1' 2>/dev/null || true\n" +
                 "sleep 2\n" +
                 "\n" +
-                "# Start VNC server\n" +
-                "if command -v vncserver >/dev/null 2>&1; then\n" +
-                "    # Use vncserver command\n" +
+                "# Start VNC server - prefer Xvnc directly (avoids hostname issues)\n" +
+                "if command -v Xvnc >/dev/null 2>&1; then\n" +
+                "    # Use Xvnc directly (doesn't require hostname)\n" +
+                "    echo 'Starting VNC server with Xvnc...'\n" +
+                "    Xvnc :1 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5901 -xstartup /root/.vnc/xstartup >/tmp/xvnc.log 2>&1 &\n" +
+                "    XVNC_PID=$!\n" +
+                "    sleep 5\n" +
+                "    # Check if Xvnc is still running\n" +
+                "    if kill -0 $XVNC_PID 2>/dev/null; then\n" +
+                "        echo 'VNC server started (Xvnc)'\n" +
+                "    else\n" +
+                "        echo 'Xvnc failed, checking logs...'\n" +
+                "        cat /tmp/xvnc.log 2>/dev/null || true\n" +
+                "        # Fall back to vncserver or x11vnc\n" +
+                "        if command -v vncserver >/dev/null 2>&1; then\n" +
+                "            echo 'Trying vncserver as fallback...'\n" +
+                "            vncserver :1 -geometry 1280x720 -depth 24 -localhost no -SecurityTypes None -xstartup /root/.vnc/xstartup >/tmp/vncserver.log 2>&1 || true\n" +
+                "        fi\n" +
+                "    fi\n" +
+                "elif command -v vncserver >/dev/null 2>&1; then\n" +
+                "    # Use vncserver command (may have hostname issues)\n" +
                 "    echo 'Starting VNC server with vncserver command...'\n" +
-                "    # Use -localhost no and -SecurityTypes None to avoid hostname issues\n" +
-                "    vncserver :1 -geometry 1280x720 -depth 24 -localhost no -SecurityTypes None -xstartup /root/.vnc/xstartup -hostname localhost >/tmp/vncserver.log 2>&1 || {\n" +
-                "        echo 'vncserver failed, trying without hostname option...'\n" +
-                "        # Try without hostname option\n" +
-                "        HOSTNAME=localhost vncserver :1 -geometry 1280x720 -depth 24 -localhost no -SecurityTypes None -xstartup /root/.vnc/xstartup >/tmp/vncserver.log 2>&1 || {\n" +
-                "            echo 'vncserver failed, checking logs...'\n" +
-                "            cat /tmp/vncserver.log 2>/dev/null || true\n" +
+                "    vncserver :1 -geometry 1280x720 -depth 24 -localhost no -SecurityTypes None -xstartup /root/.vnc/xstartup >/tmp/vncserver.log 2>&1 || {\n" +
+                "        echo 'vncserver failed, checking logs...'\n" +
+                "        cat /tmp/vncserver.log 2>/dev/null || true\n" +
+                "        echo 'Trying Xvnc as fallback...'\n" +
+                "        if command -v Xvnc >/dev/null 2>&1; then\n" +
+                "            Xvnc :1 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5901 -xstartup /root/.vnc/xstartup >/tmp/xvnc.log 2>&1 &\n" +
+                "            sleep 5\n" +
+                "        else\n" +
                 "            exit 1\n" +
                 "        }\n" +
                 "    }\n" +
