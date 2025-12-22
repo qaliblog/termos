@@ -584,7 +584,7 @@ public class InstallOSActivity extends AppCompatActivity {
                 "if command -v vncserver >/dev/null 2>&1; then\n" +
                 "    vncserver :1 -geometry 1280x720 -depth 24 -localhost no -SecurityTypes None -xstartup /root/.vnc/xstartup 2>/dev/null || true\n" +
                 "elif command -v Xvnc >/dev/null 2>&1; then\n" +
-                "    Xvnc :1 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5901 -xstartup /root/.vnc/xstartup &\n" +
+                "    Xvnc :1 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5901 &\n" +
                 "    sleep 2\n" +
                 "fi\n" +
                 "\n" +
@@ -656,7 +656,7 @@ public class InstallOSActivity extends AppCompatActivity {
                 "elif command -v Xvnc >/dev/null 2>&1; then\n" +
                 "    # Use Xvnc directly\n" +
                 "    echo 'Starting VNC server with Xvnc...'\n" +
-                "    Xvnc :1 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5901 -xstartup /root/.vnc/xstartup >/tmp/xvnc.log 2>&1 &\n" +
+                "    Xvnc :1 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5901 >/tmp/xvnc.log 2>&1 &\n" +
                 "    sleep 5\n" +
                 "    echo 'VNC server started (Xvnc)'\n" +
                 "elif command -v x11vnc >/dev/null 2>&1; then\n" +
