@@ -306,9 +306,8 @@ public class InstallOSActivity extends AppCompatActivity {
                     additionalEnvironment.put("PATH", path);
                     
                     // Set LD_LIBRARY_PATH to include libtalloc.so.2 location
-                    // Include both filesDir (where libtalloc might be) and localLibDir
+                    // Include both filesDir (where libtalloc might be) and localLibDir (already defined above)
                     String ldLibraryPath = filesDir.getAbsolutePath();
-                    File localLibDir = new File(localDir, "lib");
                     if (localLibDir.exists()) {
                         ldLibraryPath = ldLibraryPath + ":" + localLibDir.getAbsolutePath();
                     }
