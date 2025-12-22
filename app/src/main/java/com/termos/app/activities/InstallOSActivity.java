@@ -516,10 +516,11 @@ public class InstallOSActivity extends AppCompatActivity {
                 "#!/bin/bash\n" +
                 "unset SESSION_MANAGER\n" +
                 "unset DBUS_SESSION_BUS_ADDRESS\n" +
-                "exec /etc/X11/xinit/xinitrc\n" +
-                "[ -x /etc/vnc/xstartup ] && exec /etc/vnc/xstartup\n" +
+                "export DISPLAY=:1\n" +
                 "[ -r $HOME/.Xresources ] && xrdb $HOME/.Xresources\n" +
-                "x-window-manager &\n" +
+                "# Start D-Bus session\n" +
+                "eval $(dbus-launch --sh-syntax)\n" +
+                "# Start XFCE desktop environment\n" +
                 "startxfce4 &\n" +
                 "VNCEOF\n" +
                 "fi\n" +
@@ -574,14 +575,18 @@ public class InstallOSActivity extends AppCompatActivity {
                 "# Start VNC server\n" +
                 "if command -v vncserver >/dev/null 2>&1; then\n" +
                 "    vncserver :1 -geometry 1280x720 -depth 24 -localhost no -SecurityTypes None -xstartup /root/.vnc/xstartup 2>/dev/null || true\n" +
+                "    sleep 3\n" +
                 "elif command -v Xvnc >/dev/null 2>&1; then\n" +
                 "    Xvnc :1 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5901 -xstartup /root/.vnc/xstartup &\n" +
-                "    sleep 2\n" +
+                "    sleep 3\n" +
                 "elif command -v x11vnc >/dev/null 2>&1; then\n" +
                 "    # For x11vnc, we need X server first\n" +
                 "    Xvfb :1 -screen 0 1280x720x24 &\n" +
+                "    sleep 3\n" +
+                "    export DISPLAY=:1\n" +
+                "    eval $(dbus-launch --sh-syntax)\n" +
+                "    startxfce4 &\n" +
                 "    sleep 2\n" +
-                "    DISPLAY=:1 startxfce4 &\n" +
                 "    x11vnc -display :1 -rfbport 5901 -nopw -forever -shared &\n" +
                 "fi\n" +
                 "\n" +
