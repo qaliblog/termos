@@ -2,6 +2,11 @@ set -e  # Exit immediately on Failure
 
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/share/bin:/usr/share/sbin:/usr/local/bin:/usr/local/sbin:/system/bin:/system/xbin:$PREFIX/local/bin
 export HOME=/root
+n# Set hostname to avoid issues with commands that require it
+if ! hostname >/dev/null 2>&1 || [ -z "$(hostname 2>/dev/null)" ]; then
+    hostname localhost 2>/dev/null || true
+    export HOSTNAME=localhost
+fi
 
 if [ ! -s /etc/resolv.conf ]; then
     echo "nameserver 8.8.8.8" > /etc/resolv.conf
