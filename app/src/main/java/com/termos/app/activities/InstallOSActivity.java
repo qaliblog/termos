@@ -620,8 +620,9 @@ public class InstallOSActivity extends AppCompatActivity {
                 "# Start VNC server - prefer Xvnc directly (avoids hostname issues)\n" +
                 "if command -v Xvnc >/dev/null 2>&1; then\n" +
                 "    # Use Xvnc directly (doesn't require hostname)\n" +
+                "    # Xvnc automatically uses ~/.vnc/xstartup when starting a display\n" +
                 "    echo 'Starting VNC server with Xvnc...'\n" +
-                "    Xvnc :1 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5901 -xstartup /root/.vnc/xstartup >/tmp/xvnc.log 2>&1 &\n" +
+                "    Xvnc :1 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5901 >/tmp/xvnc.log 2>&1 &\n" +
                 "    XVNC_PID=$!\n" +
                 "    sleep 5\n" +
                 "    # Check if Xvnc is still running\n" +
@@ -644,7 +645,7 @@ public class InstallOSActivity extends AppCompatActivity {
                 "        cat /tmp/vncserver.log 2>/dev/null || true\n" +
                 "        echo 'Trying Xvnc as fallback...'\n" +
                 "        if command -v Xvnc >/dev/null 2>&1; then\n" +
-                "            Xvnc :1 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5901 -xstartup /root/.vnc/xstartup >/tmp/xvnc.log 2>&1 &\n" +
+                "            Xvnc :1 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5901 >/tmp/xvnc.log 2>&1 &\n" +
                 "            sleep 5\n" +
                 "        else\n" +
                 "            exit 1\n" +
