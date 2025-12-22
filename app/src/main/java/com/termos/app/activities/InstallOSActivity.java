@@ -517,11 +517,33 @@ public class InstallOSActivity extends AppCompatActivity {
                 "unset SESSION_MANAGER\n" +
                 "unset DBUS_SESSION_BUS_ADDRESS\n" +
                 "export DISPLAY=:1\n" +
+                "export USER=root\n" +
+                "export HOME=/root\n" +
+                "\n" +
+                "# Load X resources if available\n" +
                 "[ -r $HOME/.Xresources ] && xrdb $HOME/.Xresources\n" +
+                "\n" +
+                "# Wait for X server to be ready\n" +
+                "sleep 1\n" +
+                "\n" +
                 "# Start D-Bus session\n" +
-                "eval $(dbus-launch --sh-syntax)\n" +
+                "if [ -z \"$DBUS_SESSION_BUS_ADDRESS\" ]; then\n" +
+                "    eval $(dbus-launch --sh-syntax --exit-with-session)\n" +
+                "fi\n" +
+                "\n" +
                 "# Start XFCE desktop environment\n" +
-                "startxfce4 &\n" +
+                "if command -v startxfce4 >/dev/null 2>&1; then\n" +
+                "    startxfce4 >/tmp/xfce4.log 2>&1 &\n" +
+                "elif command -v xfce4-session >/dev/null 2>&1; then\n" +
+                "    xfce4-session >/tmp/xfce4.log 2>&1 &\n" +
+                "else\n" +
+                "    # Fallback: start basic XFCE components\n" +
+                "    xfce4-panel >/tmp/xfce4.log 2>&1 &\n" +
+                "    xfdesktop >/tmp/xfce4.log 2>&1 &\n" +
+                "fi\n" +
+                "\n" +
+                "# Keep script running\n" +
+                "wait\n" +
                 "VNCEOF\n" +
                 "fi\n" +
                 "chmod +x /root/.vnc/xstartup\n" +
@@ -574,23 +596,36 @@ public class InstallOSActivity extends AppCompatActivity {
                 "\n" +
                 "# Start VNC server\n" +
                 "if command -v vncserver >/dev/null 2>&1; then\n" +
-                "    vncserver :1 -geometry 1280x720 -depth 24 -localhost no -SecurityTypes None -xstartup /root/.vnc/xstartup 2>/dev/null || true\n" +
-                "    sleep 3\n" +
+                "    # Use vncserver command\n" +
+                "    vncserver :1 -geometry 1280x720 -depth 24 -localhost no -SecurityTypes None -xstartup /root/.vnc/xstartup 2>&1 | tee /tmp/vncserver.log || true\n" +
+                "    sleep 4\n" +
+                "    echo 'VNC server started (vncserver command)'\n" +
                 "elif command -v Xvnc >/dev/null 2>&1; then\n" +
-                "    Xvnc :1 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5901 -xstartup /root/.vnc/xstartup &\n" +
-                "    sleep 3\n" +
+                "    # Use Xvnc directly\n" +
+                "    Xvnc :1 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5901 -xstartup /root/.vnc/xstartup >/tmp/xvnc.log 2>&1 &\n" +
+                "    sleep 4\n" +
+                "    echo 'VNC server started (Xvnc)'\n" +
                 "elif command -v x11vnc >/dev/null 2>&1; then\n" +
                 "    # For x11vnc, we need X server first\n" +
-                "    Xvfb :1 -screen 0 1280x720x24 &\n" +
+                "    Xvfb :1 -screen 0 1280x720x24 >/tmp/xvfb.log 2>&1 &\n" +
                 "    sleep 3\n" +
                 "    export DISPLAY=:1\n" +
-                "    eval $(dbus-launch --sh-syntax)\n" +
-                "    startxfce4 &\n" +
+                "    eval $(dbus-launch --sh-syntax --exit-with-session)\n" +
+                "    if command -v startxfce4 >/dev/null 2>&1; then\n" +
+                "        startxfce4 >/tmp/xfce4.log 2>&1 &\n" +
+                "    else\n" +
+                "        xfce4-session >/tmp/xfce4.log 2>&1 &\n" +
+                "    fi\n" +
                 "    sleep 2\n" +
-                "    x11vnc -display :1 -rfbport 5901 -nopw -forever -shared &\n" +
+                "    x11vnc -display :1 -rfbport 5901 -nopw -forever -shared >/tmp/x11vnc.log 2>&1 &\n" +
+                "    echo 'VNC server started (x11vnc)'\n" +
+                "else\n" +
+                "    echo 'ERROR: No VNC server found (vncserver, Xvnc, or x11vnc)'\n" +
+                "    exit 1\n" +
                 "fi\n" +
                 "\n" +
                 "echo 'VNC server started on display :1, port 5901 (XFCE)'\n" +
+                "echo 'Check /tmp/xfce4.log for desktop startup logs'\n" +
                 "STARTEOF\n" +
                 "fi\n" +
                 "chmod +x /usr/local/bin/start-vnc.sh\n" +
@@ -648,5 +683,112 @@ public class InstallOSActivity extends AppCompatActivity {
             })
             .setNegativeButton("Cancel", null)
             .show();
+    }
+    
+    /**
+     * Update VNC scripts without full reinstallation.
+     * Useful if scripts need to be fixed after installation.
+     */
+    private void updateVNCScripts() {
+        if (!rootfsManager.isRootfsInstalled()) {
+            Toast.makeText(this, "Rootfs not installed", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        installButton.setEnabled(false);
+        progressBar.setVisibility(View.VISIBLE);
+        statusText.setText("Updating VNC scripts...");
+        
+        new UpdateScriptsTask().execute();
+    }
+    
+    private class UpdateScriptsTask extends AsyncTask<Void, String, Boolean> {
+        private String errorMessage = null;
+        
+        @Override
+        protected Boolean doInBackground(Void... params) {
+            try {
+                // Get rootfs info
+                java.util.List<String> installedRootfs = rootfsManager.getInstalledRootfs();
+                boolean isUbuntu = false;
+                String rootfsFileName = null;
+                
+                for (String rootfs : installedRootfs) {
+                    String lower = rootfs.toLowerCase();
+                    if (lower.contains("ubuntu") || lower.contains("debian")) {
+                        isUbuntu = true;
+                        rootfsFileName = rootfs;
+                        break;
+                    }
+                }
+                
+                if (!isUbuntu && !installedRootfs.isEmpty()) {
+                    rootfsFileName = installedRootfs.get(0);
+                    String lower = rootfsFileName.toLowerCase();
+                    isUbuntu = lower.contains("ubuntu") || lower.contains("debian");
+                }
+                
+                File filesDir = InstallOSActivity.this.getFilesDir();
+                File localDir = new File(filesDir.getParentFile(), "local");
+                String rootfsDirName = rootfsFileName != null ? 
+                    rootfsFileName.replace(".tar.gz", "").replace(".tar", "").toLowerCase() : "ubuntu";
+                File rootfsDir = new File(localDir, rootfsDirName);
+                
+                // Create updated xstartup script
+                String xstartupScript;
+                if (isUbuntu) {
+                    // Check if Lomiri is installed (simplified - assume XFCE for now)
+                    xstartupScript = "#!/bin/bash\n" +
+                        "unset SESSION_MANAGER\n" +
+                        "unset DBUS_SESSION_BUS_ADDRESS\n" +
+                        "export DISPLAY=:1\n" +
+                        "[ -r $HOME/.Xresources ] && xrdb $HOME/.Xresources\n" +
+                        "# Start D-Bus session\n" +
+                        "eval $(dbus-launch --sh-syntax)\n" +
+                        "# Start XFCE desktop environment\n" +
+                        "startxfce4 &\n";
+                } else {
+                    xstartupScript = "#!/bin/sh\n" +
+                        "startxfce4\n";
+                }
+                
+                // Write updated xstartup script
+                File xstartupFile = new File(rootfsDir, "root/.vnc/xstartup");
+                xstartupFile.getParentFile().mkdirs();
+                java.io.FileWriter writer = new java.io.FileWriter(xstartupFile);
+                writer.write(xstartupScript);
+                writer.close();
+                xstartupFile.setExecutable(true);
+                
+                publishProgress("VNC scripts updated successfully!");
+                return true;
+                
+            } catch (Exception e) {
+                errorMessage = "Failed to update scripts: " + e.getMessage();
+                Log.e(TAG, "Failed to update scripts", e);
+                return false;
+            }
+        }
+        
+        @Override
+        protected void onProgressUpdate(String... values) {
+            if (values.length > 0) {
+                statusText.setText(values[0]);
+            }
+        }
+        
+        @Override
+        protected void onPostExecute(Boolean success) {
+            progressBar.setVisibility(View.GONE);
+            installButton.setEnabled(true);
+            
+            if (success) {
+                statusText.setText("VNC scripts updated!\n\nPlease restart the VNC server or reinstall OS for changes to take effect.");
+                Toast.makeText(InstallOSActivity.this, "VNC scripts updated!", Toast.LENGTH_LONG).show();
+            } else {
+                statusText.setText("Update failed: " + (errorMessage != null ? errorMessage : "Unknown error"));
+                Toast.makeText(InstallOSActivity.this, "Update failed", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 }
