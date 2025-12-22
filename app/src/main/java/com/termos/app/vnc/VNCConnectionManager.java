@@ -231,8 +231,25 @@ public class VNCConnectionManager {
                 @Override
                 public void onError(String error) {
                     Log.e(TAG, "Failed to start VNC server: " + error);
-                    // Try to connect anyway - server might already be running
-                    doConnect();
+                    // Check if server is actually running despite the error
+                    if (serviceClient != null) {
+                        commandExecutor.checkVNCServerRunning(serviceClient, new LinuxCommandExecutor.ServerCheckCallback() {
+                            @Override
+                            public void onResult(boolean isRunning) {
+                                if (isRunning) {
+                                    Log.d(TAG, "VNC server is running despite startup error, connecting...");
+                                    verifyAndConnect();
+                                } else {
+                                    Log.e(TAG, "VNC server not running and startup failed: " + error);
+                                    // Try to connect anyway - might work
+                                    doConnect();
+                                }
+                            }
+                        });
+                    } else {
+                        // Try to connect anyway - server might already be running
+                        doConnect();
+                    }
                 }
             });
         } else {

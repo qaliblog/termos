@@ -607,16 +607,23 @@ public class InstallOSActivity extends AppCompatActivity {
                 "# Start VNC server\n" +
                 "if command -v vncserver >/dev/null 2>&1; then\n" +
                 "    # Use vncserver command\n" +
-                "    vncserver :1 -geometry 1280x720 -depth 24 -localhost no -SecurityTypes None -xstartup /root/.vnc/xstartup 2>&1 | tee /tmp/vncserver.log || true\n" +
-                "    sleep 4\n" +
+                "    echo 'Starting VNC server with vncserver command...'\n" +
+                "    vncserver :1 -geometry 1280x720 -depth 24 -localhost no -SecurityTypes None -xstartup /root/.vnc/xstartup >/tmp/vncserver.log 2>&1 || {\n" +
+                "        echo 'vncserver failed, checking logs...'\n" +
+                "        cat /tmp/vncserver.log 2>/dev/null || true\n" +
+                "        exit 1\n" +
+                "    }\n" +
+                "    sleep 5\n" +
                 "    echo 'VNC server started (vncserver command)'\n" +
                 "elif command -v Xvnc >/dev/null 2>&1; then\n" +
                 "    # Use Xvnc directly\n" +
+                "    echo 'Starting VNC server with Xvnc...'\n" +
                 "    Xvnc :1 -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport 5901 -xstartup /root/.vnc/xstartup >/tmp/xvnc.log 2>&1 &\n" +
-                "    sleep 4\n" +
+                "    sleep 5\n" +
                 "    echo 'VNC server started (Xvnc)'\n" +
                 "elif command -v x11vnc >/dev/null 2>&1; then\n" +
                 "    # For x11vnc, we need X server first\n" +
+                "    echo 'Starting X server and VNC with x11vnc...'\n" +
                 "    Xvfb :1 -screen 0 1280x720x24 >/tmp/xvfb.log 2>&1 &\n" +
                 "    sleep 3\n" +
                 "    export DISPLAY=:1\n" +
@@ -626,12 +633,21 @@ public class InstallOSActivity extends AppCompatActivity {
                 "    else\n" +
                 "        xfce4-session >/tmp/xfce4.log 2>&1 &\n" +
                 "    fi\n" +
-                "    sleep 2\n" +
+                "    sleep 3\n" +
                 "    x11vnc -display :1 -rfbport 5901 -nopw -forever -shared >/tmp/x11vnc.log 2>&1 &\n" +
                 "    echo 'VNC server started (x11vnc)'\n" +
                 "else\n" +
                 "    echo 'ERROR: No VNC server found (vncserver, Xvnc, or x11vnc)'\n" +
                 "    exit 1\n" +
+                "fi\n" +
+                "\n" +
+                "# Verify VNC server is running\n" +
+                "sleep 2\n" +
+                "if netstat -ln 2>/dev/null | grep -q ':5901 ' || ss -ln 2>/dev/null | grep -q ':5901 '; then\n" +
+                "    echo 'VNC server verified on port 5901'\n" +
+                "else\n" +
+                "    echo 'WARNING: VNC server may not be listening on port 5901'\n" +
+                "    echo 'Check logs in /tmp/ for errors'\n" +
                 "fi\n" +
                 "\n" +
                 "echo 'VNC server started on display :1, port 5901 (XFCE)'\n" +
