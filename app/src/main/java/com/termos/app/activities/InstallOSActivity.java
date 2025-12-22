@@ -178,9 +178,8 @@ public class InstallOSActivity extends AppCompatActivity {
                 
                 // Execute using AppShell - the command will run within rootfs via init-host script
                 try {
-                    // Get the init-host script path
-                    File filesDir = InstallOSActivity.this.getFilesDir();
-                    File localDir = new File(filesDir.getParentFile(), "local");
+                    // Get the init-host script path (filesDir and localDir already defined above)
+                    File localBinDir = new File(localDir, "bin");
                     File localBinDir = new File(localDir, "bin");
                     
                     // Determine which init script to use
