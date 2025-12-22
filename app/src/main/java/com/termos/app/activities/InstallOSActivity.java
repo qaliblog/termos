@@ -2,11 +2,10 @@ package com.termos.app.activities;
 
 import android.app.AlertDialog;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -22,8 +21,7 @@ import com.termos.app.linuxruntime.RootfsManager;
 import com.termux.shared.shell.command.ExecutionCommand;
 import com.termux.shared.shell.command.runner.app.AppShell;
 import com.termux.shared.shell.command.environment.IShellEnvironment;
-import com.termux.shared.shell.command.environment.termux.TermuxShellEnvironment;
-import com.termux.terminal.TerminalSessionClient;
+import com.termux.shared.termux.shell.command.environment.TermuxShellEnvironment;
 
 /**
  * Activity to install desktop environment and VNC server for OS tab.
@@ -107,7 +105,7 @@ public class InstallOSActivity extends AppCompatActivity {
         private String errorMessage = null;
         
         @Override
-        protected Boolean doInBackground(String... params) {
+        protected Boolean doInBackground(Void... params) {
             try {
                 publishProgress("Checking rootfs...");
                 
