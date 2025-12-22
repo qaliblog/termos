@@ -53,10 +53,10 @@ if ! command -v cron >/dev/null 2>&1; then
     apt-get install -y -qq cron 2>/dev/null || true
 fi
 
-# Create aterm-setup-storage command (same script for all distros)
-if [ ! -f "$PREFIX/local/bin/aterm-setup-storage" ]; then
+# Create termos-setup-storage command (same script for all distros)
+if [ ! -f "$PREFIX/local/bin/termos-setup-storage" ]; then
     mkdir -p "$PREFIX/local/bin" 2>/dev/null || true
-    cat > "$PREFIX/local/bin/aterm-setup-storage" << 'STORAGEEOF'
+    cat > "$PREFIX/local/bin/termos-setup-storage" << 'STORAGEEOF'
 #!/bin/sh
 # Setup /sdcard symlink for Android storage access
 # Works with Android 15+ scoped storage
@@ -93,7 +93,7 @@ request_permissions() {
             -d "package:$PKG_NAME" >/dev/null 2>&1 || true
         
         echo "Please grant storage permissions in the settings that just opened."
-        echo "Then run 'aterm-setup-storage' again."
+        echo "Then run 'termos-setup-storage' again."
         return 1
     else
         echo "Please grant storage permissions manually in Android Settings:"
@@ -181,7 +181,7 @@ else
     exec "$0"
 fi
 STORAGEEOF
-    chmod +x "$PREFIX/local/bin/aterm-setup-storage" 2>/dev/null || true
+    chmod +x "$PREFIX/local/bin/termos-setup-storage" 2>/dev/null || true
 fi
 
 # Copy fish color update script (same as Ubuntu)
@@ -270,7 +270,7 @@ fi
 "$PREFIX/local/bin/update-fish-colors.sh" 2>/dev/null || true
 
 # Setup storage access (creates /sdcard symlink)
-"$PREFIX/local/bin/aterm-setup-storage" 2>/dev/null || true
+"$PREFIX/local/bin/termos-setup-storage" 2>/dev/null || true
 
 (crontab -l 2>/dev/null | grep -v "update-fish-colors.sh"; echo "* * * * * $PREFIX/local/bin/update-fish-colors.sh >/dev/null 2>&1") | crontab - 2>/dev/null || true
 
