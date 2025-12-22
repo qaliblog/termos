@@ -265,16 +265,20 @@ public class InstallOSActivity extends AppCompatActivity {
                     
                     if (initScriptFile.exists()) {
                         // Execute init-host script via /system/bin/sh
-                        // The init-host script will pass arguments to /bin/init inside rootfs
-                        // The init script executes arguments as a shell command
+                        // The init-host script passes "$@" to /bin/init inside rootfs
+                        // The init script executes the arguments as a command
                         shellCommand = "/system/bin/sh";
-                        // Pass arguments that init-host will forward to /bin/init inside rootfs
-                        // Format: init-host.sh <shell> -c '<command>'
-                        String initCommand = initScriptFile.getAbsolutePath() + " sh -c '" + 
-                            "/root/install-os.sh" + "'";
-                        shellArgs = new String[]{"-c", initCommand};
-                        Log.d(TAG, "Using init-host script: " + initScriptFile.getAbsolutePath());
-                        Log.d(TAG, "Init command: " + initCommand);
+                        // Pass the command as arguments to init-host
+                        // init-host will pass these to /bin/init which will execute them
+                        // We need to pass: sh -c '/root/install-os.sh'
+                        // But as separate arguments, not as a single string
+                        String initScriptPath = initScriptFile.getAbsolutePath();
+                        String commandToRun = "/root/install-os.sh";
+                        // Escape single quotes in the command
+                        String escapedCommand = commandToRun.replace("'", "'\"'\"'");
+                        shellArgs = new String[]{"-c", initScriptPath + " sh -c '" + escapedCommand + "'"};
+                        Log.d(TAG, "Using init-host script: " + initScriptPath);
+                        Log.d(TAG, "Command to run: " + commandToRun);
                     } else {
                         // Fallback: try /bin/sh directly (won't work in rootfs, but might help debug)
                         Log.w(TAG, "Init script not found, using /bin/sh fallback");
