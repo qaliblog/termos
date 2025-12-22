@@ -34,6 +34,10 @@ public class VNCConnectionManager {
     private TerminalSessionClient serviceClient;
     private boolean isConnected = false;
     private boolean isPaused = false;
+    private int connectionRetryCount = 0;
+    private static final int MAX_CONNECTION_RETRIES = 10; // Maximum retries before giving up
+    private static final int CONNECTION_TIMEOUT_MS = 30000; // 30 seconds timeout
+    private Handler timeoutHandler;
     
     private VNCConnectionManager(Context context) {
         this.context = context.getApplicationContext();
@@ -137,6 +141,9 @@ public class VNCConnectionManager {
             return;
         }
         
+        // Reset retry count when starting a new connection attempt
+        connectionRetryCount = 0;
+        
         Log.d(TAG, "Connecting to VNC server at " + VNC_HOST + ":" + VNC_PORT);
         
         // Auto-start VNC server if not running
@@ -145,12 +152,8 @@ public class VNCConnectionManager {
                 @Override
                 public void onSuccess(String output) {
                     Log.d(TAG, "VNC server ready: " + output);
-                    // Wait a moment for server to be ready, then connect
-                    // Increased delay to ensure VNC server is fully started
-                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                        Log.d(TAG, "Attempting to connect to VNC server after delay");
-                        doConnect();
-                    }, 2000); // 2 second delay to ensure server is ready
+                    // Verify server is actually listening before connecting
+                    verifyAndConnect();
                 }
                 
                 @Override
@@ -165,6 +168,45 @@ public class VNCConnectionManager {
             Log.w(TAG, "No service client available, attempting direct connection");
             doConnect();
         }
+    }
+    
+    /**
+     * Verify VNC server is listening and then connect.
+     */
+    private void verifyAndConnect() {
+        if (serviceClient == null) {
+            Log.w(TAG, "No service client, attempting direct connection");
+            doConnect();
+            return;
+        }
+        
+        // Check retry limit
+        if (connectionRetryCount >= MAX_CONNECTION_RETRIES) {
+            Log.e(TAG, "Max connection retries reached, giving up");
+            // Dismiss progress dialog if connection failed
+            dismissProgressDialog();
+            return;
+        }
+        
+        connectionRetryCount++;
+        
+        // Check if VNC server is actually listening on the port
+        commandExecutor.checkVNCServerRunning(serviceClient, new LinuxCommandExecutor.ServerCheckCallback() {
+            @Override
+            public void onResult(boolean isRunning) {
+                if (isRunning) {
+                    Log.d(TAG, "VNC server confirmed listening, connecting...");
+                    connectionRetryCount = 0; // Reset retry count on success
+                    doConnect();
+                } else {
+                    Log.w(TAG, "VNC server not listening yet (attempt " + connectionRetryCount + "/" + MAX_CONNECTION_RETRIES + "), waiting and retrying...");
+                    // Retry after a delay
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        verifyAndConnect();
+                    }, 1000);
+                }
+            }
+        });
     }
     
     /**
@@ -184,6 +226,23 @@ public class VNCConnectionManager {
         }
         
         Log.d(TAG, "Starting VNC connection...");
+        
+        // Set up timeout handler to dismiss dialog if connection takes too long
+        timeoutHandler = new Handler(Looper.getMainLooper());
+        timeoutHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                // Check if dialog is still showing (connection hasn't completed)
+                if (remoteConnection != null && remoteConnection.pd != null && remoteConnection.pd.isShowing()) {
+                    Log.w(TAG, "Connection timeout - dismissing progress dialog");
+                    try {
+                        remoteConnection.pd.dismiss();
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error dismissing progress dialog on timeout", e);
+                    }
+                }
+            }
+        }, CONNECTION_TIMEOUT_MS);
         
         // Start connection by sending REINIT_SESSION message
         // This will call initializeConnection() which starts the connection thread
@@ -229,11 +288,32 @@ public class VNCConnectionManager {
     }
     
     /**
+     * Dismiss the progress dialog if it's showing.
+     */
+    private void dismissProgressDialog() {
+        if (remoteConnection != null && remoteConnection.pd != null && remoteConnection.pd.isShowing()) {
+            try {
+                remoteConnection.pd.dismiss();
+            } catch (Exception e) {
+                Log.e(TAG, "Error dismissing progress dialog", e);
+            }
+        }
+    }
+    
+    /**
      * Disconnect from VNC server.
      * Call this when OS tab is destroyed.
      */
     public void disconnect() {
+        // Cancel timeout handler
+        if (timeoutHandler != null) {
+            timeoutHandler.removeCallbacksAndMessages(null);
+            timeoutHandler = null;
+        }
+        
         if (!isConnected) {
+            // Still dismiss dialog if showing
+            dismissProgressDialog();
             return;
         }
         
