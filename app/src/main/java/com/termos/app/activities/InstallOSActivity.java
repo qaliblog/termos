@@ -591,54 +591,78 @@ public class InstallOSActivity extends AppCompatActivity {
                 "echo \"Xstartup script executing at $(date)\" > /tmp/xstartup.log 2>&1\n" +
                 "\n" +
                 "# Load X resources if available\n" +
-                "[ -r $HOME/.Xresources ] && xrdb $HOME/.Xresources\n" +
+                "[ -r $HOME/.Xresources ] && xrdb $HOME/.Xresources 2>/dev/null || true\n" +
                 "\n" +
                 "# Wait for X server to be ready\n" +
                 "sleep 2\n" +
                 "\n" +
+                "# Kill any existing desktop processes to avoid conflicts\n" +
+                "pkill -9 xfwm4 2>/dev/null || true\n" +
+                "pkill -9 xfce4-session 2>/dev/null || true\n" +
+                "pkill -9 xfsettingsd 2>/dev/null || true\n" +
+                "sleep 1\n" +
+                "\n" +
                 "# Start D-Bus session daemon\n" +
                 "if [ -z \"$DBUS_SESSION_BUS_ADDRESS\" ]; then\n" +
                 "    echo 'Starting D-Bus session...' >> /tmp/xstartup.log 2>&1\n" +
-                "    # Start dbus-daemon directly instead of dbus-launch to avoid shm-helper errors\n" +
-                "    if command -v dbus-daemon >/dev/null 2>&1; then\n" +
-                "        dbus-daemon --session --fork --print-address > /tmp/dbus-session-address 2>&1\n" +
-                "        sleep 1\n" +
-                "        DBUS_ADDR=$(cat /tmp/dbus-session-address 2>/dev/null | head -1 | grep -v '^dbus-daemon' | grep -v '^#' | tr -d '\\n')\n" +
-                "        if [ -n \"$DBUS_ADDR\" ]; then\n" +
-                "            export DBUS_SESSION_BUS_ADDRESS=\"$DBUS_ADDR\"\n" +
-                "            echo \"D-Bus started at: $DBUS_SESSION_BUS_ADDRESS\" >> /tmp/xstartup.log 2>&1\n" +
-                "        else\n" +
-                "            echo \"D-Bus daemon started but address not found, trying dbus-launch...\" >> /tmp/xstartup.log 2>&1\n" +
-                "            eval $(dbus-launch --sh-syntax --exit-with-session) 2>>/tmp/xstartup.log\n" +
-                "            echo \"D-Bus started via dbus-launch: $DBUS_SESSION_BUS_ADDRESS\" >> /tmp/xstartup.log 2>&1\n" +
-                "        fi\n" +
+                "    # Use dbus-launch with proper options to avoid shm-helper errors\n" +
+                "    # The --sh-syntax option outputs shell-compatible syntax\n" +
+                "    # We redirect stderr to avoid shm-helper warnings\n" +
+                "    eval $(dbus-launch --sh-syntax 2>/dev/null) >> /tmp/xstartup.log 2>&1\n" +
+                "    if [ -n \"$DBUS_SESSION_BUS_ADDRESS\" ]; then\n" +
+                "        echo \"D-Bus started at: $DBUS_SESSION_BUS_ADDRESS\" >> /tmp/xstartup.log 2>&1\n" +
                 "    else\n" +
-                "        # Fallback to dbus-launch if dbus-daemon not available\n" +
-                "        eval $(dbus-launch --sh-syntax --exit-with-session) 2>>/tmp/xstartup.log\n" +
-                "        echo 'D-Bus started via dbus-launch' >> /tmp/xstartup.log 2>&1\n" +
+                "        echo \"D-Bus startup had issues, continuing anyway...\" >> /tmp/xstartup.log 2>&1\n" +
                 "    fi\n" +
                 "fi\n" +
                 "\n" +
                 "# Start XFCE desktop environment\n" +
                 "echo 'Starting XFCE desktop...' >> /tmp/xstartup.log 2>&1\n" +
+                "\n" +
+                "# Try startxfce4 first (handles everything)\n" +
                 "if command -v startxfce4 >/dev/null 2>&1; then\n" +
                 "    echo 'Using startxfce4 command' >> /tmp/xstartup.log 2>&1\n" +
-                "    startxfce4 >/tmp/xfce4.log 2>&1 &\n" +
+                "    # Use --replace to replace any existing window manager\n" +
+                "    startxfce4 --replace >/tmp/xfce4.log 2>&1 &\n" +
+                "    XFCE_PID=$!\n" +
+                "    sleep 3\n" +
+                "    # Check if it's still running\n" +
+                "    if ! kill -0 $XFCE_PID 2>/dev/null; then\n" +
+                "        echo 'startxfce4 exited, trying xfce4-session...' >> /tmp/xstartup.log 2>&1\n" +
+                "        xfce4-session >/tmp/xfce4.log 2>&1 &\n" +
+                "    fi\n" +
                 "elif command -v xfce4-session >/dev/null 2>&1; then\n" +
                 "    echo 'Using xfce4-session command' >> /tmp/xstartup.log 2>&1\n" +
                 "    xfce4-session >/tmp/xfce4.log 2>&1 &\n" +
                 "else\n" +
                 "    echo 'Using individual XFCE components' >> /tmp/xstartup.log 2>&1\n" +
-                "    # Fallback: start basic XFCE components\n" +
-                "    xfce4-panel >/tmp/xfce4.log 2>&1 &\n" +
+                "    # Fallback: start basic XFCE components manually\n" +
+                "    xfwm4 --replace >/tmp/xfce4.log 2>&1 &\n" +
+                "    sleep 1\n" +
+                "    xfce4-panel >>/tmp/xfce4.log 2>&1 &\n" +
+                "    sleep 1\n" +
                 "    xfdesktop >>/tmp/xfce4.log 2>&1 &\n" +
+                "    sleep 1\n" +
+                "    xfsettingsd >>/tmp/xfce4.log 2>&1 &\n" +
                 "fi\n" +
                 "\n" +
                 "echo 'XFCE startup command executed' >> /tmp/xstartup.log 2>&1\n" +
+                "sleep 2\n" +
+                "echo 'Checking XFCE processes...' >> /tmp/xstartup.log 2>&1\n" +
+                "ps aux | grep -E '[x]fce|[x]fwm' | grep -v grep >> /tmp/xstartup.log 2>&1 || echo 'No XFCE processes found' >> /tmp/xstartup.log 2>&1\n" +
                 "\n" +
                 "# Keep script running (Xvnc expects xstartup to stay alive)\n" +
-                "# Use tail -f to keep process alive instead of exec bash\n" +
-                "tail -f /dev/null\n" +
+                "# Use wait to keep process alive and monitor child processes\n" +
+                "while true; do\n" +
+                "    sleep 60\n" +
+                "    # Check if XFCE is still running, restart if needed\n" +
+                "    if ! pgrep -x xfwm4 >/dev/null 2>&1 && ! pgrep -x xfce4-session >/dev/null 2>&1; then\n" +
+                "        echo 'XFCE not running, attempting restart...' >> /tmp/xstartup.log 2>&1\n" +
+                "        if command -v startxfce4 >/dev/null 2>&1; then\n" +
+                "            startxfce4 --replace >/tmp/xfce4-restart.log 2>&1 &\n" +
+                "        fi\n" +
+                "    fi\n" +
+                "done\n" +
                 "VNCEOF\n" +
                 "fi\n" +
                 "chmod +x /root/.vnc/xstartup\n" +
@@ -719,6 +743,8 @@ public class InstallOSActivity extends AppCompatActivity {
                 "    rm -f \"/tmp/.X${DISPLAY_NUM}-lock\" 2>/dev/null || true\n" +
                 "    \n" +
                 "    if command -v Xvnc >/dev/null 2>&1; then\n" +
+                "        # Start Xvnc (it will look for xstartup in ~/.vnc/xstartup automatically)\n" +
+                "        # But we'll also manually trigger it to be sure\n" +
                 "        Xvnc :${DISPLAY_NUM} -geometry 1280x720 -depth 24 -SecurityTypes None -rfbport ${PORT} >\"${LOG_FILE}\" 2>&1 &\n" +
                 "        local PID=$!\n" +
                 "        sleep 3\n" +
@@ -747,17 +773,33 @@ public class InstallOSActivity extends AppCompatActivity {
                 "                echo \"port:${PORT}\" >> /tmp/vnc-display.txt\n" +
                 "                echo \"VNC display info saved to /tmp/vnc-display.txt\"\n" +
                 "                \n" +
-                "                # Wait a bit more for Xvnc to fully initialize\n" +
+                "                # Xvnc should automatically run xstartup, but let's ensure it happens\n" +
+                "                # Wait a moment for Xvnc to initialize\n" +
                 "                sleep 2\n" +
                 "                \n" +
-                "                # Manually trigger xstartup if it hasn't run (Xvnc should do this automatically, but sometimes doesn't)\n" +
-                "                if [ ! -f /tmp/xstartup.log ] || [ ! -s /tmp/xstartup.log ]; then\n" +
-                "                    echo \"Manually triggering xstartup script...\"\n" +
-                "                    export DISPLAY=:${DISPLAY_NUM}\n" +
-                "                    if [ -x /root/.vnc/xstartup ]; then\n" +
+                "                # Manually trigger xstartup to ensure desktop starts\n" +
+                "                # This is needed because Xvnc doesn't always execute xstartup automatically\n" +
+                "                export DISPLAY=:${DISPLAY_NUM}\n" +
+                "                export HOME=/root\n" +
+                "                export USER=root\n" +
+                "                if [ -x /root/.vnc/xstartup ]; then\n" +
+                "                    # Check if xstartup is already running\n" +
+                "                    if [ ! -f /tmp/xstartup.log ] || [ ! -s /tmp/xstartup.log ]; then\n" +
+                "                        echo \"Starting xstartup script...\"\n" +
                 "                        /root/.vnc/xstartup >/tmp/xstartup-manual.log 2>&1 &\n" +
-                "                        echo \"xstartup triggered manually\"\n" +
+                "                        sleep 3\n" +
+                "                    else\n" +
+                "                        echo \"xstartup already running (log exists)\"\n" +
                 "                    fi\n" +
+                "                fi\n" +
+                "                \n" +
+                "                # Check if desktop environment is running\n" +
+                "                sleep 2\n" +
+                "                if pgrep -x xfwm4 >/dev/null 2>&1 || pgrep -x xfce4-session >/dev/null 2>&1 || pgrep -f startxfce4 >/dev/null 2>&1; then\n" +
+                "                    echo \"Desktop environment is running\"\n" +
+                "                else\n" +
+                "                    echo \"Desktop environment not detected yet, may still be starting...\"\n" +
+                "                    echo \"Check /tmp/xstartup.log and /tmp/xfce4.log for details\"\n" +
                 "                fi\n" +
                 "                \n" +
                 "                return 0\n" +
@@ -766,7 +808,7 @@ public class InstallOSActivity extends AppCompatActivity {
                 "        \n" +
                 "        # If we get here, Xvnc failed\n" +
                 "        echo \"Xvnc failed on display :${DISPLAY_NUM}, checking log...\"\n" +
-                "        cat \"${LOG_FILE}\" 2>/dev/null | head -5 || true\n" +
+                "        cat \"${LOG_FILE}\" 2>/dev/null | head -10 || true\n" +
                 "        kill $PID 2>/dev/null || true\n" +
                 "    fi\n" +
                 "    \n" +
