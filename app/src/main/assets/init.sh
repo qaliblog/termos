@@ -329,7 +329,7 @@ if ! pgrep -x crond >/dev/null 2>&1; then
 fi
 
 #fix linker warning
-if [[ ! -f /linkerconfig/ld.config.txt ]];then
+if [ ! -f /linkerconfig/ld.config.txt ]; then
     mkdir -p /linkerconfig
     touch /linkerconfig/ld.config.txt
 fi

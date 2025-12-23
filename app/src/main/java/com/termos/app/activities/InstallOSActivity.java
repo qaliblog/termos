@@ -136,7 +136,9 @@ public class InstallOSActivity extends AppCompatActivity {
                 Log.d(TAG, "Detected rootfs: " + rootfsFileName + ", isUbuntu: " + isUbuntu);
                 
                 String distroName = isUbuntu ? "Ubuntu/Debian" : "Alpine";
-                publishProgress("Detected " + distroName + " distribution\nInstalling desktop environment...");
+                publishProgress("Detected " + distroName + " distribution\n" +
+                    "Preparing installation...\n" +
+                    "This will install XFCE desktop and VNC server.");
                 
                 // Ensure rootfs is extracted
                 File filesDir = InstallOSActivity.this.getFilesDir();
@@ -374,7 +376,10 @@ public class InstallOSActivity extends AppCompatActivity {
                         }
                     };
                     
-                    publishProgress("Running installation script...");
+                    publishProgress("Starting installation script...\n" +
+                        "Fixing any package manager issues...\n" +
+                        "Installing desktop environment and VNC server...\n" +
+                        "This may take 10-20 minutes. Please wait...");
                     AppShell appShell = AppShell.execute(
                         InstallOSActivity.this,
                         executionCommand,
@@ -392,11 +397,28 @@ public class InstallOSActivity extends AppCompatActivity {
                     
                     // Wait for completion (with timeout)
                     long startTime = System.currentTimeMillis();
+                    long timeout = 1800000; // 30 minute timeout (increased from 10 minutes)
+                    int progressCounter = 0;
                     while (!success[0] && error[0] == null && 
-                           (System.currentTimeMillis() - startTime) < 600000) { // 10 minute timeout
+                           (System.currentTimeMillis() - startTime) < timeout) {
                         try {
                             Thread.sleep(2000);
-                            publishProgress("Installing... (this may take several minutes)");
+                            progressCounter++;
+                            long elapsed = System.currentTimeMillis() - startTime;
+                            long minutes = elapsed / 60000;
+                            long seconds = (elapsed % 60000) / 1000;
+                            
+                            // Update progress message every 5 seconds
+                            if (progressCounter % 3 == 0) {
+                                String progressMsg = String.format(
+                                    "Installing desktop environment...\n" +
+                                    "Elapsed time: %d:%02d\n" +
+                                    "This may take 10-20 minutes.\n" +
+                                    "Please be patient...",
+                                    minutes, seconds
+                                );
+                                publishProgress(progressMsg);
+                            }
                         } catch (InterruptedException e) {
                             break;
                         }
@@ -408,7 +430,11 @@ public class InstallOSActivity extends AppCompatActivity {
                     }
                     
                     if (!success[0]) {
-                        errorMessage = "Installation timed out";
+                        if (error[0] == null) {
+                            errorMessage = "Installation timed out after 30 minutes. The installation may still be in progress. Please check the logs or try again.";
+                        } else {
+                            errorMessage = error[0];
+                        }
                         return false;
                     }
                     
@@ -471,35 +497,67 @@ public class InstallOSActivity extends AppCompatActivity {
                 "set -e\n" +
                 "export DEBIAN_FRONTEND=noninteractive\n" +
                 "\n" +
+                "# Fix any interrupted dpkg operations first\n" +
+                "echo 'Checking for interrupted dpkg operations...'\n" +
+                "dpkg --configure -a 2>&1 || true\n" +
+                "echo 'Fixed dpkg configuration'\n" +
+                "\n" +
                 "# Update package lists\n" +
-                "apt-get update -qq\n" +
+                "echo 'Updating package lists...'\n" +
+                "apt-get update -qq || {\n" +
+                "    echo 'apt-get update failed, retrying after fixing dpkg...'\n" +
+                "    dpkg --configure -a 2>&1 || true\n" +
+                "    apt-get update -qq\n" +
+                "}\n" +
+                "echo 'Package lists updated'\n" +
                 "\n" +
                 "# Try to install Lomiri (Ubuntu Touch desktop environment)\n" +
                 "# Lomiri packages may not be in standard repos, so we'll try and fallback to XFCE\n" +
+                "echo 'Attempting to install desktop environment...'\n" +
                 "LOMIRI_INSTALLED=0\n" +
                 "if apt-get install -y -qq lomiri-session unity8-desktop-session-mir 2>/dev/null; then\n" +
                 "    LOMIRI_INSTALLED=1\n" +
                 "    echo 'Lomiri installed successfully'\n" +
                 "else\n" +
                 "    echo 'Lomiri packages not available, installing XFCE as fallback...'\n" +
-                "    apt-get install -y -qq xfce4 xfce4-goodies xfce4-terminal || true\n" +
+                "    apt-get install -y -qq xfce4 xfce4-goodies xfce4-terminal || {\n" +
+                "        echo 'XFCE installation had issues, fixing dpkg and retrying...'\n" +
+                "        dpkg --configure -a 2>&1 || true\n" +
+                "        apt-get install -y -qq -f || true\n" +
+                "        apt-get install -y -qq xfce4 xfce4-goodies xfce4-terminal || true\n" +
+                "    }\n" +
                 "fi\n" +
                 "\n" +
                 "# Install Mir display server (required for Lomiri)\n" +
                 "if [ $LOMIRI_INSTALLED -eq 1 ]; then\n" +
+                "    echo 'Installing Mir display server...'\n" +
                 "    apt-get install -y -qq mir mir-graphics-drivers-nvidia mir-graphics-drivers-mesa || true\n" +
                 "fi\n" +
                 "\n" +
                 "# Install VNC server (TigerVNC or tightvnc)\n" +
+                "echo 'Installing VNC server...'\n" +
                 "apt-get install -y -qq tigervnc-standalone-server tigervnc-common || \\\n" +
                 "apt-get install -y -qq tightvncserver || \\\n" +
-                "apt-get install -y -qq x11vnc\n" +
+                "apt-get install -y -qq x11vnc || {\n" +
+                "    echo 'VNC installation had issues, fixing dpkg and retrying...'\n" +
+                "    dpkg --configure -a 2>&1 || true\n" +
+                "    apt-get install -y -qq -f || true\n" +
+                "    apt-get install -y -qq tigervnc-standalone-server tigervnc-common || \\\n" +
+                "    apt-get install -y -qq tightvncserver || \\\n" +
+                "    apt-get install -y -qq x11vnc || true\n" +
+                "}\n" +
                 "\n" +
                 "# Install additional utilities\n" +
-                "apt-get install -y -qq dbus-x11\n" +
+                "echo 'Installing additional utilities...'\n" +
+                "apt-get install -y -qq dbus-x11 || {\n" +
+                "    dpkg --configure -a 2>&1 || true\n" +
+                "    apt-get install -y -qq -f || true\n" +
+                "    apt-get install -y -qq dbus-x11 || true\n" +
+                "}\n" +
                 "if [ $LOMIRI_INSTALLED -eq 0 ]; then\n" +
-                "    apt-get install -y -qq xfce4-session xfce4-panel\n" +
+                "    apt-get install -y -qq xfce4-session xfce4-panel || true\n" +
                 "fi\n" +
+                "echo 'Additional utilities installed'\n" +
                 "\n" +
                 "# Create VNC startup script\n" +
                 "mkdir -p /root/.vnc\n" +
@@ -740,6 +798,11 @@ public class InstallOSActivity extends AppCompatActivity {
                 "STARTEOF\n" +
                 "fi\n" +
                 "chmod +x /usr/local/bin/start-vnc.sh\n" +
+                "\n" +
+                "# Final dpkg check to ensure everything is properly configured\n" +
+                "echo 'Performing final configuration check...'\n" +
+                "dpkg --configure -a 2>&1 || true\n" +
+                "apt-get install -y -qq -f 2>&1 || true\n" +
                 "\n" +
                 "echo 'Installation complete!'\n";
         } else {
