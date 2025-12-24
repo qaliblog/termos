@@ -81,8 +81,19 @@ ARGS="$ARGS -b /data"
 ARGS="$ARGS -b /dev/urandom:/dev/random"
 ARGS="$ARGS -b /proc"
 ARGS="$ARGS -b $PREFIX"
-ARGS="$ARGS -b $PREFIX/local/stat:/proc/stat"
-ARGS="$ARGS -b $PREFIX/local/vmstat:/proc/vmstat"
+# Create stat/vmstat files if they don't exist to avoid PRoot warnings
+mkdir -p "$PREFIX/local" 2>/dev/null || true
+if [ ! -f "$PREFIX/local/stat" ]; then
+    # Create a minimal stat file (just to avoid binding error)
+    echo "cpu  0 0 0 0 0 0 0 0 0 0" > "$PREFIX/local/stat" 2>/dev/null || true
+fi
+if [ ! -f "$PREFIX/local/vmstat" ]; then
+    # Create a minimal vmstat file (just to avoid binding error)
+    echo "nr_free_pages 0" > "$PREFIX/local/vmstat" 2>/dev/null || true
+fi
+# Only bind if files exist
+[ -f "$PREFIX/local/stat" ] && ARGS="$ARGS -b $PREFIX/local/stat:/proc/stat"
+[ -f "$PREFIX/local/vmstat" ] && ARGS="$ARGS -b $PREFIX/local/vmstat:/proc/vmstat"
 
 if [ -e "/proc/self/fd" ]; then
   ARGS="$ARGS -b /proc/self/fd:/dev/fd"

@@ -855,6 +855,16 @@ public class InstallOSActivity extends AppCompatActivity {
                 "    \n" +
                 "    echo \"Trying display :${DISPLAY_NUM}, port ${PORT}...\"\n" +
                 "    \n" +
+                "    # Ensure /proc is mounted before starting VNC (required for desktop)\n" +
+                "    if ! mountpoint -q /proc 2>/dev/null; then\n" +
+                "        echo \"Mounting /proc before starting VNC...\"\n" +
+                "        if [ -d /proc ] && [ -r /proc/version ] 2>/dev/null; then\n" +
+                "            mount --bind /proc /proc 2>/dev/null || true\n" +
+                "        else\n" +
+                "            mount -t proc proc /proc 2>/dev/null || true\n" +
+                "        fi\n" +
+                "    fi\n" +
+                "    \n" +
                 "    # Remove any existing socket/lock for this display\n" +
                 "    rm -rf \"/tmp/.X11-unix/X${DISPLAY_NUM}\" 2>/dev/null || true\n" +
                 "    rm -f \"/tmp/.X${DISPLAY_NUM}-lock\" 2>/dev/null || true\n" +

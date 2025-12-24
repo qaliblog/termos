@@ -287,6 +287,25 @@ if ! command -v cron >/dev/null 2>&1; then
     safe_apt_get install -y -qq cron || true
 fi
 
+# Copy helper scripts if they exist in files directory
+# Copy mount-proc helper script
+if [ -f "$PREFIX/local/bin/mount-proc.sh" ]; then
+    chmod +x "$PREFIX/local/bin/mount-proc.sh" 2>/dev/null || true
+elif [ -f "$PREFIX/files/mount-proc.sh" ]; then
+    mkdir -p "$PREFIX/local/bin" 2>/dev/null || true
+    cp "$PREFIX/files/mount-proc.sh" "$PREFIX/local/bin/mount-proc.sh" 2>/dev/null || true
+    chmod +x "$PREFIX/local/bin/mount-proc.sh" 2>/dev/null || true
+fi
+
+# Copy install-lomiri helper script
+if [ -f "$PREFIX/local/bin/install-lomiri.sh" ]; then
+    chmod +x "$PREFIX/local/bin/install-lomiri.sh" 2>/dev/null || true
+elif [ -f "$PREFIX/files/install-lomiri.sh" ]; then
+    mkdir -p "$PREFIX/local/bin" 2>/dev/null || true
+    cp "$PREFIX/files/install-lomiri.sh" "$PREFIX/local/bin/install-lomiri.sh" 2>/dev/null || true
+    chmod +x "$PREFIX/local/bin/install-lomiri.sh" 2>/dev/null || true
+fi
+
 # Create termos-setup-storage command
 if [ ! -f "$PREFIX/local/bin/termos-setup-storage" ]; then
     mkdir -p "$PREFIX/local/bin" 2>/dev/null || true
