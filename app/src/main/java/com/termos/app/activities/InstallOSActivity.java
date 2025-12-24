@@ -922,20 +922,23 @@ public class InstallOSActivity extends AppCompatActivity {
                 "                # Wait a moment for Xvnc to initialize\n" +
                 "                sleep 2\n" +
                 "                \n" +
+                "                # Save display info for xstartup to use\n" +
+                "                echo \"display:${DISPLAY_NUM}\" > /tmp/vnc-display.txt\n" +
+                "                echo \"port:${PORT}\" >> /tmp/vnc-display.txt\n" +
+                "                \n" +
                 "                # Manually trigger xstartup to ensure desktop starts\n" +
                 "                # This is needed because Xvnc doesn't always execute xstartup automatically\n" +
                 "                export DISPLAY=:${DISPLAY_NUM}\n" +
                 "                export HOME=/root\n" +
                 "                export USER=root\n" +
                 "                if [ -x /root/.vnc/xstartup ]; then\n" +
-                "                    # Check if xstartup is already running\n" +
-                "                    if [ ! -f /tmp/xstartup.log ] || [ ! -s /tmp/xstartup.log ]; then\n" +
-                "                        echo \"Starting xstartup script...\"\n" +
-                "                        /root/.vnc/xstartup >/tmp/xstartup-manual.log 2>&1 &\n" +
-                "                        sleep 3\n" +
-                "                    else\n" +
-                "                        echo \"xstartup already running (log exists)\"\n" +
-                "                    fi\n" +
+                "                    # Check if xstartup is already running for this display\n" +
+                "                    # Kill any existing xstartup for different display\n" +
+                "                    pkill -f 'xstartup' 2>/dev/null || true\n" +
+                "                    sleep 1\n" +
+                "                    echo \"Starting xstartup script for display :${DISPLAY_NUM}...\"\n" +
+                "                    /root/.vnc/xstartup >/tmp/xstartup-manual.log 2>&1 &\n" +
+                "                    sleep 5\n" +
                 "                fi\n" +
                 "                \n" +
                 "                # Check if desktop environment is running\n" +
