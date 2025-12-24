@@ -306,6 +306,15 @@ elif [ -f "$PREFIX/files/install-lomiri.sh" ]; then
     chmod +x "$PREFIX/local/bin/install-lomiri.sh" 2>/dev/null || true
 fi
 
+# Copy diagnose-desktop helper script if it exists
+if [ -f "$PREFIX/local/bin/diagnose-desktop.sh" ]; then
+    chmod +x "$PREFIX/local/bin/diagnose-desktop.sh" 2>/dev/null || true
+elif [ -f "$PREFIX/files/diagnose-desktop.sh" ]; then
+    mkdir -p "$PREFIX/local/bin" 2>/dev/null || true
+    cp "$PREFIX/files/diagnose-desktop.sh" "$PREFIX/local/bin/diagnose-desktop.sh" 2>/dev/null || true
+    chmod +x "$PREFIX/local/bin/diagnose-desktop.sh" 2>/dev/null || true
+fi
+
 # Create termos-setup-storage command
 if [ ! -f "$PREFIX/local/bin/termos-setup-storage" ]; then
     mkdir -p "$PREFIX/local/bin" 2>/dev/null || true

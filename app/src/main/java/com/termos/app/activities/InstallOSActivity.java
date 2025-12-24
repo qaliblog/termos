@@ -542,17 +542,15 @@ public class InstallOSActivity extends AppCompatActivity {
                 "    echo 'Lomiri installed successfully from UBports repo'\n" +
                 "else\n" +
                 "    echo 'Lomiri packages not available in repositories'\n" +
-                "    echo 'Attempting to install from source or alternative method...'\n" +
-                "    # Try to install build dependencies and build from source\n" +
-                "    apt-get install -y -qq build-essential cmake qtbase5-dev qtdeclarative5-dev qml-module-qtquick2 2>/dev/null || true\n" +
-                "    # For now, fall back to XFCE but keep trying to get Lomiri working\n" +
-                "    echo 'Installing XFCE as temporary desktop while we set up Lomiri...'\n" +
+                "    echo 'Installing XFCE desktop environment as fallback...'\n" +
+                "    # Install XFCE as the desktop environment\n" +
                 "    apt-get install -y -qq xfce4 xfce4-goodies xfce4-terminal || {\n" +
                 "        echo 'XFCE installation had issues, fixing dpkg and retrying...'\n" +
                 "        dpkg --configure -a 2>&1 || true\n" +
                 "        apt-get install -y -qq -f || true\n" +
                 "        apt-get install -y -qq xfce4 xfce4-goodies xfce4-terminal || true\n" +
                 "    }\n" +
+                "    echo 'XFCE installed successfully'\n" +
                 "fi\n" +
                 "\n" +
                 "# Install Mir display server and Xwayland (required for Lomiri with VNC)\n" +
@@ -733,34 +731,54 @@ public class InstallOSActivity extends AppCompatActivity {
                 "    fi\n" +
                 "fi\n" +
                 "\n" +
-                "# Start XFCE desktop environment\n" +
-                "echo 'Starting XFCE desktop...' >> /tmp/xstartup.log 2>&1\n" +
+                "# Start desktop environment (XFCE or Lomiri)\n" +
+                "echo 'Starting desktop environment...' >> /tmp/xstartup.log 2>&1\n" +
                 "\n" +
-                "# Try startxfce4 first (handles everything)\n" +
-                "if command -v startxfce4 >/dev/null 2>&1; then\n" +
-                "    echo 'Using startxfce4 command' >> /tmp/xstartup.log 2>&1\n" +
-                "    # Use --replace to replace any existing window manager\n" +
-                "    startxfce4 --replace >/tmp/xfce4.log 2>&1 &\n" +
-                "    XFCE_PID=$!\n" +
+                "# Try Lomiri first if available\n" +
+                "if command -v lomiri-session >/dev/null 2>&1; then\n" +
+                "    echo 'Starting Lomiri desktop...' >> /tmp/xstartup.log 2>&1\n" +
+                "    export XDG_SESSION_TYPE=x11\n" +
+                "    export QT_QUICK_CONTROLS_MOBILE=true\n" +
+                "    export QT_QUICK_CONTROLS_STYLE=Suru\n" +
+                "    lomiri-session >/tmp/lomiri.log 2>&1 &\n" +
                 "    sleep 3\n" +
-                "    # Check if it's still running\n" +
-                "    if ! kill -0 $XFCE_PID 2>/dev/null; then\n" +
-                "        echo 'startxfce4 exited, trying xfce4-session...' >> /tmp/xstartup.log 2>&1\n" +
-                "        xfce4-session >/tmp/xfce4.log 2>&1 &\n" +
+                "    if pgrep -x lomiri-session >/dev/null 2>&1; then\n" +
+                "        echo 'Lomiri started successfully' >> /tmp/xstartup.log 2>&1\n" +
+                "    else\n" +
+                "        echo 'Lomiri failed to start, falling back to XFCE...' >> /tmp/xstartup.log 2>&1\n" +
+                "        # Fall through to XFCE\n" +
                 "    fi\n" +
-                "elif command -v xfce4-session >/dev/null 2>&1; then\n" +
-                "    echo 'Using xfce4-session command' >> /tmp/xstartup.log 2>&1\n" +
-                "    xfce4-session >/tmp/xfce4.log 2>&1 &\n" +
-                "else\n" +
-                "    echo 'Using individual XFCE components' >> /tmp/xstartup.log 2>&1\n" +
-                "    # Fallback: start basic XFCE components manually\n" +
-                "    xfwm4 --replace >/tmp/xfce4.log 2>&1 &\n" +
-                "    sleep 1\n" +
-                "    xfce4-panel >>/tmp/xfce4.log 2>&1 &\n" +
-                "    sleep 1\n" +
-                "    xfdesktop >>/tmp/xfce4.log 2>&1 &\n" +
-                "    sleep 1\n" +
-                "    xfsettingsd >>/tmp/xfce4.log 2>&1 &\n" +
+                "fi\n" +
+                "\n" +
+                "# Start XFCE if Lomiri not available or failed\n" +
+                "if ! pgrep -x lomiri-session >/dev/null 2>&1; then\n" +
+                "    echo 'Starting XFCE desktop...' >> /tmp/xstartup.log 2>&1\n" +
+                "    # Try startxfce4 first (handles everything)\n" +
+                "    if command -v startxfce4 >/dev/null 2>&1; then\n" +
+                "        echo 'Using startxfce4 command' >> /tmp/xstartup.log 2>&1\n" +
+                "        # Use --replace to replace any existing window manager\n" +
+                "        startxfce4 --replace >/tmp/xfce4.log 2>&1 &\n" +
+                "        XFCE_PID=$!\n" +
+                "        sleep 3\n" +
+                "        # Check if it's still running\n" +
+                "        if ! kill -0 $XFCE_PID 2>/dev/null; then\n" +
+                "            echo 'startxfce4 exited, trying xfce4-session...' >> /tmp/xstartup.log 2>&1\n" +
+                "            xfce4-session >/tmp/xfce4.log 2>&1 &\n" +
+                "        fi\n" +
+                "    elif command -v xfce4-session >/dev/null 2>&1; then\n" +
+                "        echo 'Using xfce4-session command' >> /tmp/xstartup.log 2>&1\n" +
+                "        xfce4-session >/tmp/xfce4.log 2>&1 &\n" +
+                "    else\n" +
+                "        echo 'Using individual XFCE components' >> /tmp/xstartup.log 2>&1\n" +
+                "        # Fallback: start basic XFCE components manually\n" +
+                "        xfwm4 --replace >/tmp/xfce4.log 2>&1 &\n" +
+                "        sleep 1\n" +
+                "        xfce4-panel >>/tmp/xfce4.log 2>&1 &\n" +
+                "        sleep 1\n" +
+                "        xfdesktop >>/tmp/xfce4.log 2>&1 &\n" +
+                "        sleep 1\n" +
+                "        xfsettingsd >>/tmp/xfce4.log 2>&1 &\n" +
+                "    fi\n" +
                 "fi\n" +
                 "\n" +
                 "echo 'XFCE startup command executed' >> /tmp/xstartup.log 2>&1\n" +
@@ -922,11 +940,17 @@ public class InstallOSActivity extends AppCompatActivity {
                 "                \n" +
                 "                # Check if desktop environment is running\n" +
                 "                sleep 2\n" +
-                "                if pgrep -x xfwm4 >/dev/null 2>&1 || pgrep -x xfce4-session >/dev/null 2>&1 || pgrep -f startxfce4 >/dev/null 2>&1; then\n" +
+                "                if pgrep -x xfwm4 >/dev/null 2>&1 || pgrep -x xfce4-session >/dev/null 2>&1 || pgrep -f startxfce4 >/dev/null 2>&1 || pgrep -x lomiri-session >/dev/null 2>&1 || pgrep -f lomiri >/dev/null 2>&1; then\n" +
                 "                    echo \"Desktop environment is running\"\n" +
                 "                else\n" +
                 "                    echo \"Desktop environment not detected yet, may still be starting...\"\n" +
                 "                    echo \"Check /tmp/xstartup.log and /tmp/xfce4.log for details\"\n" +
+                "                    echo \"Attempting to manually start desktop...\"\n" +
+                "                    # Try to start desktop manually as fallback\n" +
+                "                    if [ -x /root/.vnc/xstartup ]; then\n" +
+                "                        /root/.vnc/xstartup >/tmp/xstartup-fallback.log 2>&1 &\n" +
+                "                        sleep 3\n" +
+                "                    fi\n" +
                 "                fi\n" +
                 "                \n" +
                 "                return 0\n" +
