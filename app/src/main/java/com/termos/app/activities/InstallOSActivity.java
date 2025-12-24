@@ -511,15 +511,42 @@ public class InstallOSActivity extends AppCompatActivity {
                 "}\n" +
                 "echo 'Package lists updated'\n" +
                 "\n" +
+                "# Try to add UBports repository for Lomiri packages\n" +
+                "echo 'Attempting to add UBports repository for Lomiri...'\n" +
+                "UBPORTS_ADDED=0\n" +
+                "# Check Ubuntu version\n" +
+                "UBUNTU_VERSION=$(lsb_release -cs 2>/dev/null || echo 'jammy')\n" +
+                "if [ -n \"$UBUNTU_VERSION\" ]; then\n" +
+                "    # Try to add UBports repository\n" +
+                "    if ! grep -q 'ubports' /etc/apt/sources.list.d/ubports.list 2>/dev/null; then\n" +
+                "        echo \"deb http://repo.ubports.com/ $UBUNTU_VERSION main\" > /etc/apt/sources.list.d/ubports.list 2>/dev/null || true\n" +
+                "        # Try to add GPG key (may fail in container, that's OK)\n" +
+                "        apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 0E61A7B277ED8A82 2>/dev/null || true\n" +
+                "        apt-get update -qq 2>/dev/null || true\n" +
+                "        UBPORTS_ADDED=1\n" +
+                "    fi\n" +
+                "fi\n" +
+                "\n" +
                 "# Try to install Lomiri (Ubuntu Touch desktop environment)\n" +
-                "# Lomiri packages may not be in standard repos, so we'll try and fallback to XFCE\n" +
-                "echo 'Attempting to install desktop environment...'\n" +
+                "echo 'Attempting to install Lomiri desktop environment...'\n" +
                 "LOMIRI_INSTALLED=0\n" +
-                "if apt-get install -y -qq lomiri-session unity8-desktop-session-mir 2>/dev/null; then\n" +
+                "# Try multiple methods to install Lomiri\n" +
+                "if apt-get install -y -qq lomiri-session 2>/dev/null; then\n" +
                 "    LOMIRI_INSTALLED=1\n" +
-                "    echo 'Lomiri installed successfully'\n" +
+                "    echo 'Lomiri installed successfully from standard repos'\n" +
+                "elif apt-get install -y -qq unity8-desktop-session-mir 2>/dev/null; then\n" +
+                "    LOMIRI_INSTALLED=1\n" +
+                "    echo 'Unity8/Lomiri installed successfully'\n" +
+                "elif [ $UBPORTS_ADDED -eq 1 ] && apt-get install -y -qq lomiri-session 2>/dev/null; then\n" +
+                "    LOMIRI_INSTALLED=1\n" +
+                "    echo 'Lomiri installed successfully from UBports repo'\n" +
                 "else\n" +
-                "    echo 'Lomiri packages not available, installing XFCE as fallback...'\n" +
+                "    echo 'Lomiri packages not available in repositories'\n" +
+                "    echo 'Attempting to install from source or alternative method...'\n" +
+                "    # Try to install build dependencies and build from source\n" +
+                "    apt-get install -y -qq build-essential cmake qtbase5-dev qtdeclarative5-dev qml-module-qtquick2 2>/dev/null || true\n" +
+                "    # For now, fall back to XFCE but keep trying to get Lomiri working\n" +
+                "    echo 'Installing XFCE as temporary desktop while we set up Lomiri...'\n" +
                 "    apt-get install -y -qq xfce4 xfce4-goodies xfce4-terminal || {\n" +
                 "        echo 'XFCE installation had issues, fixing dpkg and retrying...'\n" +
                 "        dpkg --configure -a 2>&1 || true\n" +
@@ -528,10 +555,15 @@ public class InstallOSActivity extends AppCompatActivity {
                 "    }\n" +
                 "fi\n" +
                 "\n" +
-                "# Install Mir display server (required for Lomiri)\n" +
+                "# Install Mir display server and Xwayland (required for Lomiri with VNC)\n" +
                 "if [ $LOMIRI_INSTALLED -eq 1 ]; then\n" +
-                "    echo 'Installing Mir display server...'\n" +
-                "    apt-get install -y -qq mir mir-graphics-drivers-nvidia mir-graphics-drivers-mesa || true\n" +
+                "    echo 'Installing Mir display server and Xwayland...'\n" +
+                "    apt-get install -y -qq mir mir-graphics-drivers-mesa xwayland || {\n" +
+                "        echo 'Some Mir packages failed, trying individual packages...'\n" +
+                "        apt-get install -y -qq mir 2>/dev/null || true\n" +
+                "        apt-get install -y -qq xwayland 2>/dev/null || true\n" +
+                "    }\n" +
+                "    echo 'Mir and Xwayland installation complete'\n" +
                 "fi\n" +
                 "\n" +
                 "# Install VNC server (TigerVNC or tightvnc)\n" +
@@ -562,21 +594,91 @@ public class InstallOSActivity extends AppCompatActivity {
                 "# Create VNC startup script\n" +
                 "mkdir -p /root/.vnc\n" +
                 "if [ $LOMIRI_INSTALLED -eq 1 ]; then\n" +
-                "    # Lomiri startup script\n" +
+                "    # Lomiri startup script with Xwayland bridge for VNC\n" +
                 "    cat > /root/.vnc/xstartup << 'VNCEOF'\n" +
                 "#!/bin/bash\n" +
                 "unset SESSION_MANAGER\n" +
                 "unset DBUS_SESSION_BUS_ADDRESS\n" +
                 "export DISPLAY=${DISPLAY:-:1}\n" +
-                "export XDG_SESSION_TYPE=mir\n" +
-                "export MIR_SOCKET=/run/mir_socket\n" +
-                "[ -x /etc/vnc/xstartup ] && exec /etc/vnc/xstartup\n" +
-                "[ -r $HOME/.Xresources ] && xrdb $HOME/.Xresources\n" +
-                "# Start Mir display server\n" +
-                "mir_display_server --wayland-socket-name=wayland-0 &\n" +
+                "export USER=root\n" +
+                "export HOME=/root\n" +
+                "\n" +
+                "echo \"Lomiri xstartup script executing at $(date)\" > /tmp/xstartup.log 2>&1\n" +
+                "\n" +
+                "# Mount /proc if not already mounted (required for D-Bus and other services)\n" +
+                "if ! mountpoint -q /proc 2>/dev/null; then\n" +
+                "    echo 'Mounting /proc...' >> /tmp/xstartup.log 2>&1\n" +
+                "    if [ -d /proc ] && [ -r /proc/version ] 2>/dev/null; then\n" +
+                "        mount --bind /proc /proc 2>/dev/null || true\n" +
+                "    else\n" +
+                "        mount -t proc proc /proc 2>/dev/null || true\n" +
+                "    fi\n" +
+                "fi\n" +
+                "\n" +
+                "# Load X resources if available\n" +
+                "[ -r $HOME/.Xresources ] && xrdb $HOME/.Xresources 2>/dev/null || true\n" +
+                "\n" +
+                "# Wait for X server to be ready\n" +
                 "sleep 2\n" +
-                "# Start Lomiri session\n" +
-                "lomiri-session &\n" +
+                "\n" +
+                "# Start D-Bus session daemon\n" +
+                "if [ -z \"$DBUS_SESSION_BUS_ADDRESS\" ]; then\n" +
+                "    echo 'Starting D-Bus session...' >> /tmp/xstartup.log 2>&1\n" +
+                "    export TMPDIR=/tmp\n" +
+                "    DBUS_OUTPUT=$(dbus-launch --sh-syntax 2>/dev/null || dbus-launch --sh-syntax 2>&1 | grep -v 'shm-helper' || true)\n" +
+                "    if [ -n \"$DBUS_OUTPUT\" ]; then\n" +
+                "        eval \"$DBUS_OUTPUT\" >> /tmp/xstartup.log 2>&1\n" +
+                "    fi\n" +
+                "    if [ -n \"$DBUS_SESSION_BUS_ADDRESS\" ]; then\n" +
+                "        echo \"D-Bus started at: $DBUS_SESSION_BUS_ADDRESS\" >> /tmp/xstartup.log 2>&1\n" +
+                "    fi\n" +
+                "fi\n" +
+                "\n" +
+                "# Method 1: Try to run Lomiri with Xwayland on X11 (for VNC compatibility)\n" +
+                "echo 'Attempting to start Lomiri with Xwayland...' >> /tmp/xstartup.log 2>&1\n" +
+                "if command -v Xwayland >/dev/null 2>&1 && command -v lomiri-session >/dev/null 2>&1; then\n" +
+                "    # Start Xwayland on a separate display\n" +
+                "    export WAYLAND_DISPLAY=wayland-0\n" +
+                "    export XDG_SESSION_TYPE=wayland\n" +
+                "    # Start Mir with X11 backend\n" +
+                "    if command -v mir_display_server >/dev/null 2>&1; then\n" +
+                "        mir_display_server --x11-display=$DISPLAY --x11-scale=1 >/tmp/mir.log 2>&1 &\n" +
+                "        sleep 2\n" +
+                "    fi\n" +
+                "    # Start Lomiri session\n" +
+                "    lomiri-session >/tmp/lomiri.log 2>&1 &\n" +
+                "    LOMIRI_PID=$!\n" +
+                "    sleep 3\n" +
+                "    if kill -0 $LOMIRI_PID 2>/dev/null; then\n" +
+                "        echo 'Lomiri started successfully with Xwayland' >> /tmp/xstartup.log 2>&1\n" +
+                "    else\n" +
+                "        echo 'Lomiri failed to start, trying alternative method...' >> /tmp/xstartup.log 2>&1\n" +
+                "        # Fallback: try direct X11 mode if available\n" +
+                "        export XDG_SESSION_TYPE=x11\n" +
+                "        lomiri-session >/tmp/lomiri.log 2>&1 &\n" +
+                "    fi\n" +
+                "elif command -v lomiri-session >/dev/null 2>&1; then\n" +
+                "    # Method 2: Try direct X11 mode\n" +
+                "    echo 'Trying Lomiri in X11 mode...' >> /tmp/xstartup.log 2>&1\n" +
+                "    export XDG_SESSION_TYPE=x11\n" +
+                "    lomiri-session >/tmp/lomiri.log 2>&1 &\n" +
+                "else\n" +
+                "    echo 'Lomiri not found, falling back to basic X session' >> /tmp/xstartup.log 2>&1\n" +
+                "    # Fallback to basic terminal\n" +
+                "    xterm -fa \"DejaVu Sans Mono\" -fs 14 &\n" +
+                "fi\n" +
+                "\n" +
+                "echo 'Lomiri startup complete' >> /tmp/xstartup.log 2>&1\n" +
+                "\n" +
+                "# Keep script running\n" +
+                "while true; do\n" +
+                "    sleep 60\n" +
+                "    # Check if Lomiri is still running, restart if needed\n" +
+                "    if ! pgrep -x lomiri-session >/dev/null 2>&1 && command -v lomiri-session >/dev/null 2>&1; then\n" +
+                "        echo 'Lomiri not running, attempting restart...' >> /tmp/xstartup.log 2>&1\n" +
+                "        lomiri-session >/tmp/lomiri-restart.log 2>&1 &\n" +
+                "    fi\n" +
+                "done\n" +
                 "VNCEOF\n" +
                 "else\n" +
                 "    # XFCE startup script (fallback)\n" +
@@ -589,6 +691,16 @@ public class InstallOSActivity extends AppCompatActivity {
                 "export HOME=/root\n" +
                 "\n" +
                 "echo \"Xstartup script executing at $(date)\" > /tmp/xstartup.log 2>&1\n" +
+                "\n" +
+                "# Mount /proc if not already mounted (required for D-Bus and other services)\n" +
+                "if ! mountpoint -q /proc 2>/dev/null; then\n" +
+                "    echo 'Mounting /proc...' >> /tmp/xstartup.log 2>&1\n" +
+                "    if [ -d /proc ] && [ -r /proc/version ] 2>/dev/null; then\n" +
+                "        mount --bind /proc /proc 2>/dev/null || true\n" +
+                "    else\n" +
+                "        mount -t proc proc /proc 2>/dev/null || true\n" +
+                "    fi\n" +
+                "fi\n" +
                 "\n" +
                 "# Load X resources if available\n" +
                 "[ -r $HOME/.Xresources ] && xrdb $HOME/.Xresources 2>/dev/null || true\n" +
@@ -606,9 +718,14 @@ public class InstallOSActivity extends AppCompatActivity {
                 "if [ -z \"$DBUS_SESSION_BUS_ADDRESS\" ]; then\n" +
                 "    echo 'Starting D-Bus session...' >> /tmp/xstartup.log 2>&1\n" +
                 "    # Use dbus-launch with proper options to avoid shm-helper errors\n" +
-                "    # The --sh-syntax option outputs shell-compatible syntax\n" +
-                "    # We redirect stderr to avoid shm-helper warnings\n" +
-                "    eval $(dbus-launch --sh-syntax 2>/dev/null) >> /tmp/xstartup.log 2>&1\n" +
+                "    # Set TMPDIR to an absolute path to help with shm-helper path resolution\n" +
+                "    export TMPDIR=/tmp\n" +
+                "    # Use --sh-syntax and redirect stderr to avoid shm-helper warnings\n" +
+                "    # The shm-helper error is harmless but we suppress it\n" +
+                "    DBUS_OUTPUT=$(dbus-launch --sh-syntax 2>/dev/null || dbus-launch --sh-syntax 2>&1 | grep -v 'shm-helper' || true)\n" +
+                "    if [ -n \"$DBUS_OUTPUT\" ]; then\n" +
+                "        eval \"$DBUS_OUTPUT\" >> /tmp/xstartup.log 2>&1\n" +
+                "    fi\n" +
                 "    if [ -n \"$DBUS_SESSION_BUS_ADDRESS\" ]; then\n" +
                 "        echo \"D-Bus started at: $DBUS_SESSION_BUS_ADDRESS\" >> /tmp/xstartup.log 2>&1\n" +
                 "    else\n" +

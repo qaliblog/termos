@@ -30,9 +30,24 @@ if [ ! -f "$VNC_XSTARTUP" ]; then
 #!/bin/sh
 # Lomiri (Ubuntu Touch) startup script for VNC - Touch-based, no mouse hover
 
+# Mount /proc if not already mounted (required for D-Bus and other services)
+if ! mountpoint -q /proc 2>/dev/null; then
+    if [ -d /proc ] && [ -r /proc/version ] 2>/dev/null; then
+        mount --bind /proc /proc 2>/dev/null || true
+    else
+        mount -t proc proc /proc 2>/dev/null || true
+    fi
+fi
+
 # Start D-Bus if not running
 if [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then
-    eval $(dbus-launch --sh-syntax)
+    # Set TMPDIR to an absolute path to help with shm-helper path resolution
+    export TMPDIR=/tmp
+    # Use --sh-syntax and filter out shm-helper errors (they're harmless)
+    DBUS_OUTPUT=$(dbus-launch --sh-syntax 2>/dev/null || dbus-launch --sh-syntax 2>&1 | grep -v 'shm-helper' || true)
+    if [ -n "$DBUS_OUTPUT" ]; then
+        eval "$DBUS_OUTPUT"
+    fi
     export DBUS_SESSION_BUS_ADDRESS
 fi
 
@@ -44,10 +59,16 @@ export MIR_SERVER_ENABLE_MIR_CLIENT=1
 # Disable mouse hover effects
 export QT_X11_NO_MITSHM=1
 
-# Start Lomiri session
+# Set display
+export DISPLAY=${DISPLAY:-:1}
+
+# Try to start Lomiri session with Xwayland bridge for VNC compatibility
 if command -v lomiri-session >/dev/null 2>&1; then
+    # Try X11 mode first (works better with VNC)
+    export XDG_SESSION_TYPE=x11
     exec lomiri-session
 elif command -v unity8-session >/dev/null 2>&1; then
+    export XDG_SESSION_TYPE=x11
     exec unity8-session
 else
     # Fallback: start basic X session with touch-friendly terminal

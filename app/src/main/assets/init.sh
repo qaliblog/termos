@@ -48,6 +48,24 @@ if ! command -v crond >/dev/null 2>&1; then
     apk add dcron 2>/dev/null || true
 fi
 
+# Copy mount-proc helper script if it exists
+if [ -f "$PREFIX/local/bin/mount-proc.sh" ]; then
+    chmod +x "$PREFIX/local/bin/mount-proc.sh" 2>/dev/null || true
+elif [ -f "$PREFIX/files/mount-proc.sh" ]; then
+    mkdir -p "$PREFIX/local/bin" 2>/dev/null || true
+    cp "$PREFIX/files/mount-proc.sh" "$PREFIX/local/bin/mount-proc.sh" 2>/dev/null || true
+    chmod +x "$PREFIX/local/bin/mount-proc.sh" 2>/dev/null || true
+fi
+
+# Copy install-lomiri helper script if it exists
+if [ -f "$PREFIX/local/bin/install-lomiri.sh" ]; then
+    chmod +x "$PREFIX/local/bin/install-lomiri.sh" 2>/dev/null || true
+elif [ -f "$PREFIX/files/install-lomiri.sh" ]; then
+    mkdir -p "$PREFIX/local/bin" 2>/dev/null || true
+    cp "$PREFIX/files/install-lomiri.sh" "$PREFIX/local/bin/install-lomiri.sh" 2>/dev/null || true
+    chmod +x "$PREFIX/local/bin/install-lomiri.sh" 2>/dev/null || true
+fi
+
 # Create termos-setup-storage command
 if [ ! -f "$PREFIX/local/bin/termos-setup-storage" ]; then
     mkdir -p "$PREFIX/local/bin" 2>/dev/null || true
@@ -324,6 +342,22 @@ if ! pgrep -x crond >/dev/null 2>&1; then
                 echo -e "\e[33;1m[!] \e[0mWarning: Failed to start cron daemon (fish theme updates may not work automatically)\e[0m"
                 echo -e "\e[33;1m[!] \e[0mYou can manually run: $PREFIX/local/bin/update-fish-colors.sh\e[0m"
             fi
+        fi
+    fi
+fi
+
+# Mount /proc if not already mounted (required for many system operations)
+if ! mountpoint -q /proc 2>/dev/null; then
+    # Try to mount /proc from host system
+    if [ -d /proc ] && [ -r /proc/version ] 2>/dev/null; then
+        # /proc exists on host, try to bind mount it
+        mount --bind /proc /proc 2>/dev/null || true
+    else
+        # If /proc doesn't exist on host, create a minimal proc mount
+        # This is a fallback - ideally /proc should be bind-mounted by PRoot
+        if ! mount -t proc proc /proc 2>/dev/null; then
+            # If mount fails, at least create the directory structure
+            mkdir -p /proc 2>/dev/null || true
         fi
     fi
 fi
