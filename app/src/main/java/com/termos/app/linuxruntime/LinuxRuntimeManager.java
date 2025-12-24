@@ -16,6 +16,9 @@ public class LinuxRuntimeManager {
     private static final String SETUP_MARKER = "/root/.termos-setup-complete";
     private static final String VNC_START_SCRIPT_NAME = "start-vnc.sh";
     private static final String VNC_START_SCRIPT_PATH = "/usr/local/bin/start-vnc.sh";
+    private static final String INSTALL_LOMIRI_SCRIPT_NAME = "install-lomiri.sh";
+    private static final String MOUNT_PROC_SCRIPT_NAME = "mount-proc.sh";
+    private static final String DIAGNOSE_DESKTOP_SCRIPT_NAME = "diagnose-desktop.sh";
     
     private static LinuxRuntimeManager instance;
     private Context context;
@@ -48,6 +51,11 @@ public class LinuxRuntimeManager {
         
         // Copy VNC start script to rootfs if not present
         copyScriptToRootfs(VNC_START_SCRIPT_NAME, VNC_START_SCRIPT_PATH);
+        
+        // Copy helper scripts to rootfs (accessible from PRoot via $PREFIX/local/bin)
+        copyScriptToRootfs(INSTALL_LOMIRI_SCRIPT_NAME, "$PREFIX/local/bin/" + INSTALL_LOMIRI_SCRIPT_NAME);
+        copyScriptToRootfs(MOUNT_PROC_SCRIPT_NAME, "$PREFIX/local/bin/" + MOUNT_PROC_SCRIPT_NAME);
+        copyScriptToRootfs(DIAGNOSE_DESKTOP_SCRIPT_NAME, "$PREFIX/local/bin/" + DIAGNOSE_DESKTOP_SCRIPT_NAME);
     }
     
     /**
@@ -80,6 +88,8 @@ public class LinuxRuntimeManager {
     
     /**
      * Copy a script from assets to the rootfs.
+     * If targetPath contains $PREFIX, it will be copied to the local/bin directory
+     * which is accessible from PRoot environment.
      */
     private void copyScriptToRootfs(String assetName, String targetPath) {
         try {
@@ -100,7 +110,15 @@ public class LinuxRuntimeManager {
             
             // Copy from assets
             AssetManager assets = context.getAssets();
-            InputStream in = assets.open(assetName);
+            InputStream in = null;
+            try {
+                in = assets.open(assetName);
+            } catch (IOException e) {
+                // Script might not exist in assets, that's OK
+                Log.d(TAG, "Script " + assetName + " not found in assets, skipping");
+                return;
+            }
+            
             OutputStream out = new FileOutputStream(targetFile);
             
             byte[] buffer = new byte[8192];
