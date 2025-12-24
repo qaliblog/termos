@@ -131,15 +131,60 @@ for port in 5901 5902 5903; do
 done
 echo ""
 
-echo "=== 9. Recommendations ==="
+echo "=== 9. Check VNC startup script ==="
+VNC_START_SCRIPT=""
+if [ -f /usr/local/bin/start-vnc.sh ]; then
+    echo "✓ /usr/local/bin/start-vnc.sh exists"
+    if [ -x /usr/local/bin/start-vnc.sh ]; then
+        echo "✓ Script is executable"
+        VNC_START_SCRIPT="/usr/local/bin/start-vnc.sh"
+    else
+        echo "✗ Script is NOT executable"
+        chmod +x /usr/local/bin/start-vnc.sh 2>/dev/null && echo "  ✓ Fixed permissions" || echo "  ✗ Failed to fix"
+        VNC_START_SCRIPT="/usr/local/bin/start-vnc.sh"
+    fi
+elif [ -f "$PREFIX/local/bin/start-vnc.sh" ]; then
+    echo "✓ $PREFIX/local/bin/start-vnc.sh exists"
+    VNC_START_SCRIPT="$PREFIX/local/bin/start-vnc.sh"
+else
+    echo "✗ VNC startup script not found"
+    echo "  Checked: /usr/local/bin/start-vnc.sh"
+    echo "  Checked: $PREFIX/local/bin/start-vnc.sh"
+fi
+echo ""
+
+echo "=== 10. Recommendations ==="
 if ! mountpoint -q /proc 2>/dev/null; then
     echo "⚠ Mount /proc: mount -t proc proc /proc"
 fi
+
 if ! pgrep -x Xvnc >/dev/null 2>&1; then
-    echo "⚠ Start VNC server: /usr/local/bin/start-vnc.sh"
+    echo "⚠ VNC server is NOT running"
+    if [ -n "$VNC_START_SCRIPT" ] && [ -x "$VNC_START_SCRIPT" ]; then
+        echo "  To start VNC server, run:"
+        echo "    bash $VNC_START_SCRIPT"
+        echo ""
+        read -p "  Would you like to start VNC server now? (y/n) " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            echo "  Starting VNC server..."
+            bash "$VNC_START_SCRIPT" >/tmp/vnc-start.log 2>&1 &
+            sleep 3
+            if pgrep -x Xvnc >/dev/null 2>&1; then
+                echo "  ✓ VNC server started successfully"
+            else
+                echo "  ✗ VNC server failed to start. Check /tmp/vnc-start.log"
+            fi
+        fi
+    else
+        echo "  VNC startup script not found. You may need to:"
+        echo "    1. Reinstall OS (Install OS button in app)"
+        echo "    2. Or manually start Xvnc: Xvnc :1 -geometry 1280x720 -depth 24 -SecurityTypes None &"
+    fi
 fi
-if [ $DESKTOP_FOUND -eq 0 ]; then
-    echo "⚠ Desktop not running. Options:"
+
+if [ $DESKTOP_FOUND -eq 0 ] && pgrep -x Xvnc >/dev/null 2>&1; then
+    echo "⚠ Desktop not running (but VNC is running). Options:"
     if command -v lomiri-session >/dev/null 2>&1; then
         echo "  - Try Lomiri: export DISPLAY=:1 && lomiri-session &"
     fi
@@ -148,6 +193,19 @@ if [ $DESKTOP_FOUND -eq 0 ]; then
     fi
     if [ -x /root/.vnc/xstartup ]; then
         echo "  - Run xstartup: export DISPLAY=:1 && /root/.vnc/xstartup &"
+        echo ""
+        read -p "  Would you like to run xstartup now? (y/n) " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            export DISPLAY=:1
+            /root/.vnc/xstartup >/tmp/xstartup-manual.log 2>&1 &
+            sleep 3
+            if pgrep -x xfwm4 >/dev/null 2>&1 || pgrep -x xfce4-session >/dev/null 2>&1 || pgrep -x lomiri-session >/dev/null 2>&1; then
+                echo "  ✓ Desktop started successfully"
+            else
+                echo "  ✗ Desktop failed to start. Check /tmp/xstartup-manual.log"
+            fi
+        fi
     fi
 fi
 echo ""
