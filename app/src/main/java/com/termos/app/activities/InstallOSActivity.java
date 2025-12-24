@@ -603,6 +603,18 @@ public class InstallOSActivity extends AppCompatActivity {
                 "\n" +
                 "echo \"Lomiri xstartup script executing at $(date)\" > /tmp/xstartup.log 2>&1\n" +
                 "\n" +
+                "# Detect correct DISPLAY from VNC info file or use default\n" +
+                "if [ -f /tmp/vnc-display.txt ]; then\n" +
+                "    VNC_DISPLAY=$(grep '^display:' /tmp/vnc-display.txt | cut -d: -f2 | tr -d ' ')\n" +
+                "    if [ -n \"$VNC_DISPLAY\" ]; then\n" +
+                "        export DISPLAY=:${VNC_DISPLAY}\n" +
+                "        echo \"Using DISPLAY from vnc-display.txt: $DISPLAY\" >> /tmp/xstartup.log 2>&1\n" +
+                "    fi\n" +
+                "fi\n" +
+                "# Fallback to default if not set\n" +
+                "export DISPLAY=${DISPLAY:-:1}\n" +
+                "echo \"Final DISPLAY: $DISPLAY\" >> /tmp/xstartup.log 2>&1\n" +
+                "\n" +
                 "# Mount /proc if not already mounted (required for D-Bus and other services)\n" +
                 "if ! mountpoint -q /proc 2>/dev/null; then\n" +
                 "    echo 'Mounting /proc...' >> /tmp/xstartup.log 2>&1\n" +
@@ -619,16 +631,32 @@ public class InstallOSActivity extends AppCompatActivity {
                 "# Wait for X server to be ready\n" +
                 "sleep 2\n" +
                 "\n" +
-                "# Start D-Bus session daemon\n" +
+                "# Verify X server is accessible\n" +
+                "if ! xdpyinfo >/dev/null 2>&1; then\n" +
+                "    echo \"Warning: X server not accessible on $DISPLAY, waiting...\" >> /tmp/xstartup.log 2>&1\n" +
+                "    sleep 3\n" +
+                "    if ! xdpyinfo >/dev/null 2>&1; then\n" +
+                "        echo \"Error: Cannot connect to X server on $DISPLAY\" >> /tmp/xstartup.log 2>&1\n" +
+                "        exit 1\n" +
+                "    fi\n" +
+                "fi\n" +
+                "\n" +
+                "# Start D-Bus session daemon (suppress shm-helper errors)\n" +
                 "if [ -z \"$DBUS_SESSION_BUS_ADDRESS\" ]; then\n" +
                 "    echo 'Starting D-Bus session...' >> /tmp/xstartup.log 2>&1\n" +
                 "    export TMPDIR=/tmp\n" +
-                "    DBUS_OUTPUT=$(dbus-launch --sh-syntax 2>/dev/null || dbus-launch --sh-syntax 2>&1 | grep -v 'shm-helper' || true)\n" +
+                "    # Redirect stderr to filter out shm-helper errors\n" +
+                "    DBUS_OUTPUT=$(dbus-launch --sh-syntax 2>/dev/null 2>&1 | grep -vE '(shm-helper|expected absolute path)' || dbus-launch --sh-syntax 2>&1 | grep -vE '(shm-helper|expected absolute path)' || true)\n" +
                 "    if [ -n \"$DBUS_OUTPUT\" ]; then\n" +
-                "        eval \"$DBUS_OUTPUT\" >> /tmp/xstartup.log 2>&1\n" +
+                "        # Only eval if output looks valid (contains DBUS_SESSION_BUS_ADDRESS)\n" +
+                "        if echo \"$DBUS_OUTPUT\" | grep -q 'DBUS_SESSION_BUS_ADDRESS'; then\n" +
+                "            eval \"$DBUS_OUTPUT\" >> /tmp/xstartup.log 2>&1\n" +
+                "        fi\n" +
                 "    fi\n" +
                 "    if [ -n \"$DBUS_SESSION_BUS_ADDRESS\" ]; then\n" +
                 "        echo \"D-Bus started at: $DBUS_SESSION_BUS_ADDRESS\" >> /tmp/xstartup.log 2>&1\n" +
+                "    else\n" +
+                "        echo \"D-Bus startup had issues, continuing anyway...\" >> /tmp/xstartup.log 2>&1\n" +
                 "    fi\n" +
                 "fi\n" +
                 "\n" +
