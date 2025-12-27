@@ -30,21 +30,36 @@ apt-get update -qq || {
 UBUNTU_VERSION=$(lsb_release -cs 2>/dev/null || echo "jammy")
 echo "Detected Ubuntu version: $UBUNTU_VERSION"
 
-# Try to add UBports repository
-echo "[3/8] Adding UBports repository..."
+# Add Ubuntu Touch repositories for Lomiri
+echo "[3/8] Adding Ubuntu Touch repositories..."
 if [ ! -f /etc/apt/sources.list.d/ubports.list ]; then
+    # Add UBports repository
     echo "deb http://repo.ubports.com/ $UBUNTU_VERSION main" > /etc/apt/sources.list.d/ubports.list
+    echo "deb http://repo.ubports.com/ $UBUNTU_VERSION devel" >> /etc/apt/sources.list.d/ubports.list
     echo "UBports repository added"
-    
-    # Try to add GPG key (may fail in container, that's OK)
-    echo "Adding GPG key..."
+
+    # Add Ubuntu Touch PPA if available
+    if command -v add-apt-repository >/dev/null 2>&1; then
+        add-apt-repository -y ppa:ubports-developers/ppa 2>/dev/null || true
+        echo "Ubuntu Touch PPA added"
+    fi
+
+    # Try to add GPG keys
+    echo "Adding GPG keys..."
     apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 0E61A7B277ED8A82 2>/dev/null || {
-        echo "Warning: Could not add GPG key. Repository may not work."
-        echo "You may need to add it manually or install packages without verification."
+        echo "Warning: Could not add UBports GPG key"
     }
-    
+
+    # Add Lomiri repository if available
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        if [ "$ID" = "ubuntu" ] && [ "$VERSION_ID" = "20.04" ]; then
+            echo "deb http://archive.ubuntu.com/ubuntu focal-proposed main universe" > /etc/apt/sources.list.d/lomiri-focal.list
+        fi
+    fi
+
     apt-get update -qq 2>/dev/null || {
-        echo "Warning: Failed to update with UBports repo, continuing anyway..."
+        echo "Warning: Failed to update repositories, continuing anyway..."
     }
 else
     echo "UBports repository already exists"
@@ -58,44 +73,50 @@ LOMIRI_INSTALLED=0
 if apt-get install -y -qq lomiri-session 2>/dev/null; then
     LOMIRI_INSTALLED=1
     echo "✓ Lomiri installed from UBports repository"
-# Method 2: Try from standard repos
-elif apt-get install -y -qq lomiri-session 2>/dev/null; then
-    LOMIRI_INSTALLED=1
-    echo "✓ Lomiri installed from standard repository"
-# Method 3: Try unity8 packages
+# Method 2: Try unity8-desktop-session-mir
 elif apt-get install -y -qq unity8-desktop-session-mir 2>/dev/null; then
     LOMIRI_INSTALLED=1
     echo "✓ Unity8/Lomiri installed"
+# Method 3: Try individual Lomiri components
+elif apt-get install -y -qq lomiri 2>/dev/null; then
+    LOMIRI_INSTALLED=1
+    echo "✓ Lomiri base installed"
+# Method 4: Try installing from Ubuntu proposed/universe
+elif apt-get install -y -qq --allow-unauthenticated lomiri-session 2>/dev/null; then
+    LOMIRI_INSTALLED=1
+    echo "✓ Lomiri installed (unauthenticated)"
 else
     echo "✗ Lomiri packages not found in repositories"
     echo ""
-    echo "Lomiri may need to be built from source or installed from a PPA."
-    echo "Options:"
-    echo "1. Check if your Ubuntu version is supported by UBports"
-    echo "2. Try installing build dependencies and building from source"
-    echo "3. Use XFCE as an alternative desktop environment"
-    echo ""
-    read -p "Do you want to install build dependencies and try building from source? (y/n) " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        echo "[5/8] Installing build dependencies..."
-        apt-get install -y build-essential cmake \
-            qtbase5-dev qtdeclarative5-dev qml-module-qtquick2 \
-            libqt5gui5 libqt5qml5 libqt5quick5 \
-            libmirclient-dev libmircommon-dev \
-            libgsettings-qt-dev libaccountsservice-dev \
-            libunity-api-dev || {
-            echo "Some build dependencies failed to install"
-        }
-        echo "Build dependencies installed"
+    echo "Attempting alternative installation methods..."
+
+    # Try to install development versions
+    if apt-get install -y -qq lomiri-session/unstable 2>/dev/null; then
+        LOMIRI_INSTALLED=1
+        echo "✓ Lomiri development version installed"
+    # Try to install build dependencies and attempt installation again
+    elif apt-get install -y -qq build-essential cmake qtbase5-dev qtdeclarative5-dev \
+            qml-module-qtquick2 libqt5gui5 libqt5qml5 libqt5quick5 \
+            libmirclient-dev libmircommon-dev libgsettings-qt-dev \
+            libaccountsservice-dev libunity-api-dev 2>/dev/null; then
+        echo "Build dependencies installed, trying Lomiri installation again..."
+        if apt-get install -y -qq lomiri-session 2>/dev/null; then
+            LOMIRI_INSTALLED=1
+            echo "✓ Lomiri installed after installing dependencies"
+        fi
+    fi
+
+    if [ $LOMIRI_INSTALLED -eq 0 ]; then
         echo ""
-        echo "To build Lomiri from source, you'll need to:"
-        echo "1. Clone the Lomiri repositories from https://github.com/ubports"
-        echo "2. Follow the build instructions"
-        echo "3. Install the built packages"
-        LOMIRI_INSTALLED=0
-    else
-        LOMIRI_INSTALLED=0
+        echo "Lomiri installation failed. Options:"
+        echo "1. Check if your Ubuntu version is supported by UBports"
+        echo "2. Try building from source: https://github.com/ubports/lomiri"
+        echo "3. Use XFCE as an alternative: apt-get install -y xfce4"
+        echo ""
+        echo "Continuing with XFCE fallback..."
+        if apt-get install -y -qq xfce4 xfce4-goodies 2>/dev/null; then
+            echo "✓ XFCE installed as fallback desktop"
+        fi
     fi
 fi
 
@@ -202,12 +223,16 @@ echo ""
 echo "=== Installation Complete ==="
 if [ $LOMIRI_INSTALLED -eq 1 ]; then
     echo "✓ Lomiri is installed and configured"
-    echo "You can now start VNC server with: vncserver :1"
-    echo "Or use the OS tab in the app"
+    echo "✓ Desktop environment ready for VNC"
+    echo ""
+    echo "To start manually:"
+    echo "  /usr/local/bin/start-vnc.sh"
+    echo "Or use the OS tab in the Termos app"
 else
-    echo "✗ Lomiri installation was not successful"
-    echo "You may need to:"
-    echo "  1. Check if your Ubuntu version is supported"
-    echo "  2. Build Lomiri from source"
-    echo "  3. Use XFCE as an alternative: apt-get install -y xfce4"
+    echo "⚠ Lomiri installation was not successful"
+    echo "XFCE or another desktop environment may be available as fallback"
+    echo ""
+    echo "You can still use VNC with available desktop environments"
+    echo "Or try building Lomiri from source:"
+    echo "  https://github.com/ubports/lomiri"
 fi

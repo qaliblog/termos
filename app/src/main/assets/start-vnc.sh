@@ -1,14 +1,32 @@
 #!/bin/sh
 # VNC Server startup script for Termos
-# Starts TigerVNC server on display :1 (port 5901)
+# Starts TigerVNC server with automatic port incrementing
 
-VNC_DISPLAY=":1"
-VNC_PORT="5901"
+VNC_BASE_PORT=5901
 VNC_RESOLUTION="1024x768"
 VNC_DEPTH="24"
 VNC_PASSWORD_FILE="$HOME/.vnc/passwd"
 VNC_LOG_DIR="$HOME/.vnc"
 VNC_XSTARTUP="$HOME/.vnc/xstartup"
+VNC_DISPLAY_FILE="/tmp/vnc-display.txt"
+
+# Function to find an available VNC port
+find_available_port() {
+    local port=$VNC_BASE_PORT
+    local max_port=5999
+
+    while [ $port -le $max_port ]; do
+        # Check if port is already in use
+        if ! (ss -ln 2>/dev/null | grep -q ":$port ") && ! (netstat -ln 2>/dev/null | grep -q ":$port "); then
+            echo $port
+            return 0
+        fi
+        port=$((port + 1))
+    done
+
+    echo "No available VNC ports found between $VNC_BASE_PORT and $max_port" >&2
+    return 1
+}
 
 # Create VNC directory
 mkdir -p "$VNC_LOG_DIR"
@@ -78,6 +96,16 @@ EOF
     chmod +x "$VNC_XSTARTUP"
 fi
 
+# Find an available port
+VNC_PORT=$(find_available_port)
+if [ $? -ne 0 ]; then
+    echo "Failed to find available VNC port"
+    exit 1
+fi
+
+# Calculate display number from port (port 5901 = display :1, port 5902 = display :2, etc.)
+VNC_DISPLAY=":$((VNC_PORT - 5900))"
+
 # Kill existing VNC server on this display if running
 vncserver -kill "$VNC_DISPLAY" >/dev/null 2>&1 || true
 
@@ -94,6 +122,14 @@ vncserver "$VNC_DISPLAY" \
 if [ $? -eq 0 ]; then
     echo "VNC server started successfully on $VNC_DISPLAY"
     echo "Connect via: localhost:$VNC_PORT"
+
+    # Write port information to file for client to read
+    mkdir -p "$(dirname "$VNC_DISPLAY_FILE")"
+    echo "display:$VNC_DISPLAY" > "$VNC_DISPLAY_FILE"
+    echo "port:$VNC_PORT" >> "$VNC_DISPLAY_FILE"
+    echo "resolution:$VNC_RESOLUTION" >> "$VNC_DISPLAY_FILE"
+    echo "started:$(date +%s)" >> "$VNC_DISPLAY_FILE"
+    echo "VNC port information written to $VNC_DISPLAY_FILE"
 else
     echo "Failed to start VNC server. Check logs: $VNC_LOG_DIR/vncserver.log"
     exit 1

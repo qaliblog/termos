@@ -86,7 +86,9 @@ public class VNCConnectionManager {
     private int connectionRetryCount = 0;
     private static final int MAX_CONNECTION_RETRIES = 10; // Maximum retries before giving up
     private static final int CONNECTION_TIMEOUT_MS = 25000; // 25 seconds timeout (socket timeout is 20s, add 5s buffer)
+    private static final int CONNECTION_RETRY_INTERVAL_MS = 5000; // 5 seconds between connection retries
     private Handler timeoutHandler;
+    private Handler retryHandler;
     private AlertDialog customProgressDialog; // Custom dialog with close button
     
     private VNCConnectionManager(Context context) {
@@ -186,6 +188,47 @@ public class VNCConnectionManager {
     }
     
     /**
+     * Start continuous retry mechanism for VNC connection.
+     * Attempts to connect every 5 seconds until successful.
+     */
+    private void startContinuousRetry() {
+        if (retryHandler != null) {
+            retryHandler.removeCallbacksAndMessages(null);
+        }
+
+        retryHandler = new Handler(Looper.getMainLooper());
+        Runnable retryRunnable = new Runnable() {
+            @Override
+            public void run() {
+                // Check if we should stop retrying (connected or paused)
+                if (isPaused || (remoteConnection != null && remoteConnection.isConnected())) {
+                    Log.d(TAG, "Stopping continuous retry - connected or paused");
+                    return;
+                }
+
+                Log.d(TAG, "Attempting connection retry...");
+                connect();
+
+                // Schedule next retry in 5 seconds if still not connected
+                retryHandler.postDelayed(this, CONNECTION_RETRY_INTERVAL_MS);
+            }
+        };
+
+        // Start first retry immediately
+        retryHandler.post(retryRunnable);
+    }
+
+    /**
+     * Stop continuous retry mechanism.
+     */
+    private void stopContinuousRetry() {
+        if (retryHandler != null) {
+            retryHandler.removeCallbacksAndMessages(null);
+            retryHandler = null;
+        }
+    }
+
+    /**
      * Connect to VNC server.
      * Auto-starts VNC server if not running.
      * Call this when OS tab becomes visible.
@@ -206,9 +249,12 @@ public class VNCConnectionManager {
             resume();
             return;
         }
-        
+
         // Reset retry count when starting a new connection attempt
         connectionRetryCount = 0;
+
+        // Start continuous retry mechanism
+        startContinuousRetry();
         
         // Cancel any existing timeout handler
         if (timeoutHandler != null) {
@@ -279,7 +325,7 @@ public class VNCConnectionManager {
         
         commandExecutor.executeCommand(
             "if [ -f " + VNC_DISPLAY_FILE + " ]; then " +
-            "  grep -o 'port:[0-9]*' " + VNC_DISPLAY_FILE + " | cut -d: -f2; " +
+            "  grep '^port:' " + VNC_DISPLAY_FILE + " | cut -d: -f2; " +
             "else " +
             "  echo '" + DEFAULT_VNC_PORT + "'; " +
             "fi",
@@ -299,12 +345,12 @@ public class VNCConnectionManager {
                         }
                     }
                     connection.setPort(port);
-                    Log.d(TAG, "Using VNC port: " + port);
+                    Log.d(TAG, "Using VNC port from file: " + port);
                     if (onComplete != null) {
                         onComplete.run();
                     }
                 }
-                
+
                 @Override
                 public void onError(String error) {
                     Log.w(TAG, "Could not read VNC port file, using default: " + DEFAULT_VNC_PORT);
@@ -453,9 +499,11 @@ public class VNCConnectionManager {
         if (!isConnected) {
             return;
         }
-        
+
         Log.d(TAG, "Pausing VNC connection");
         isPaused = true;
+        // Stop continuous retry while paused
+        stopContinuousRetry();
         // Note: bVNC doesn't have explicit pause, but we can stop rendering
         // The connection will remain alive
     }
@@ -469,13 +517,15 @@ public class VNCConnectionManager {
             connect();
             return;
         }
-        
+
         if (!isPaused) {
             return;
         }
-        
+
         Log.d(TAG, "Resuming VNC connection");
         isPaused = false;
+        // Restart continuous retry mechanism
+        startContinuousRetry();
         // Connection should automatically resume rendering
     }
     
@@ -586,16 +636,19 @@ public class VNCConnectionManager {
             timeoutHandler.removeCallbacksAndMessages(null);
             timeoutHandler = null;
         }
-        
+
+        // Stop continuous retry
+        stopContinuousRetry();
+
         // Dismiss any showing dialogs
         dismissProgressDialog();
-        
+
         if (!isConnected) {
             return;
         }
-        
+
         Log.d(TAG, "Disconnecting from VNC server");
-        
+
         if (remoteConnection != null) {
             try {
                 remoteConnection.closeConnection();
@@ -603,7 +656,7 @@ public class VNCConnectionManager {
                 Log.e(TAG, "Error disconnecting", e);
             }
         }
-        
+
         isConnected = false;
         isPaused = false;
     }

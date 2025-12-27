@@ -507,9 +507,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         if (mTermuxTerminalSessionActivityClient != null)
             mTermuxTerminalSessionActivityClient.onCreate();
-        
+
         // Setup tabs
         setupTabs();
+
+        // Start VNC server automatically when app starts
+        startVNCServerIfNeeded();
     }
     
     /**
@@ -1059,6 +1062,43 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         Intent intent = new Intent(context, TermuxActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         return intent;
+    }
+
+    /**
+     * Start VNC server automatically when the app starts.
+     * This ensures VNC is available for both terminal and OS tabs.
+     */
+    private void startVNCServerIfNeeded() {
+        if (mTermuxService == null) {
+            Logger.logWarn(LOG_TAG, "Cannot start VNC server: TermuxService not available");
+            return;
+        }
+
+        Logger.logDebug(LOG_TAG, "Starting VNC server automatically on app startup");
+
+        // Get the terminal session client for command execution
+        TermuxTerminalSessionActivityClient sessionClient = getTermuxTerminalSessionActivityClient();
+        if (sessionClient == null) {
+            Logger.logWarn(LOG_TAG, "Cannot start VNC server: TerminalSessionClient not available");
+            return;
+        }
+
+        // Use LinuxCommandExecutor to start VNC server
+        com.termos.app.linuxruntime.LinuxCommandExecutor commandExecutor =
+            new com.termos.app.linuxruntime.LinuxCommandExecutor(this);
+
+        commandExecutor.startVNCServerIfNeeded(sessionClient, new com.termos.app.linuxruntime.LinuxCommandExecutor.CommandCallback() {
+            @Override
+            public void onSuccess(String output) {
+                Logger.logDebug(LOG_TAG, "VNC server started successfully on app startup: " + output);
+            }
+
+            @Override
+            public void onError(String error) {
+                Logger.logWarn(LOG_TAG, "Failed to start VNC server on app startup: " + error);
+                // Don't show error dialog on startup failure - user can manually start it from OS tab
+            }
+        });
     }
 
 }
