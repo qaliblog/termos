@@ -201,7 +201,7 @@ public class VNCConnectionManager {
             @Override
             public void run() {
                 // Check if we should stop retrying (connected or paused)
-                if (isPaused || (remoteConnection != null && remoteConnection.isConnected())) {
+                if (isPaused || isConnected) {
                     Log.d(TAG, "Stopping continuous retry - connected or paused");
                     return;
                 }

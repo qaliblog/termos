@@ -1077,7 +1077,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         Logger.logDebug(LOG_TAG, "Starting VNC server automatically on app startup");
 
         // Get the terminal session client for command execution
-        TermuxTerminalSessionActivityClient sessionClient = getTermuxTerminalSessionActivityClient();
+        TermuxTerminalSessionActivityClient sessionClient = getTermuxTerminalSessionClient();
         if (sessionClient == null) {
             Logger.logWarn(LOG_TAG, "Cannot start VNC server: TerminalSessionClient not available");
             return;
