@@ -32,8 +32,8 @@ import com.termos.app.activities.RootfsSetupActivity;
 import com.termos.app.linuxruntime.RootfsManager;
 import com.termos.app.terminal.TermuxActivityRootView;
 import com.termos.app.ui.TermosTabAdapter;
+import com.termos.app.ui.NoSwipeViewPager;
 import com.google.android.material.tabs.TabLayout;
-import androidx.viewpager.widget.ViewPager;
 import com.termos.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termos.app.terminal.io.TermuxTerminalExtraKeys;
 import com.termux.shared.activities.ReportActivity;
@@ -68,7 +68,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.drawerlayout.widget.DrawerLayout;
-import androidx.viewpager.widget.ViewPager;
 
 import java.util.Arrays;
 
@@ -543,15 +542,16 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     
     private void setupTabs() {
         TabLayout tabLayout = findViewById(R.id.tab_layout);
-        ViewPager viewPager = findViewById(R.id.view_pager);
+        NoSwipeViewPager viewPager = findViewById(R.id.view_pager);
         
         if (tabLayout != null && viewPager != null) {
-            TermosTabAdapter adapter = new TermosTabAdapter(getSupportFragmentManager(), 
+            TermosTabAdapter adapter = new TermosTabAdapter(getSupportFragmentManager(),
                 androidx.fragment.app.FragmentPagerAdapter.BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT, this);
             viewPager.setAdapter(adapter);
             tabLayout.setupWithViewPager(viewPager);
-            // Note: ViewPager swiping is enabled by default - tabs can be switched by swiping or clicking
-            // This provides familiar Android tab navigation while preserving terminal functionality
+            // Disable swipe gestures for tab switching - tabs can only be switched by clicking
+            // This prevents accidental tab switches during terminal/OS interaction
+            viewPager.setPagingEnabled(false);
         }
     }
 
@@ -896,8 +896,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
 
-    public ViewPager getTerminalToolbarViewPager() {
-        return (ViewPager) findViewById(R.id.terminal_toolbar_view_pager);
+    public NoSwipeViewPager getTerminalToolbarViewPager() {
+        return (NoSwipeViewPager) findViewById(R.id.terminal_toolbar_view_pager);
     }
 
     public float getTerminalToolbarDefaultHeight() {

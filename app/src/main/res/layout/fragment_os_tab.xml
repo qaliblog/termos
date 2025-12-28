@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@android:color/black">
@@ -12,7 +13,113 @@
         android:focusableInTouchMode="true"
         android:visibility="gone" />
 
-    <!-- Status overlay when VNC is not connected -->
+    <!-- VNC Connection Form -->
+    <ScrollView
+        android:id="@+id/vnc_connection_form"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/black"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="24dp"
+            android:gravity="center">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Connect to VNC Server"
+                android:textColor="@android:color/white"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="32dp" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:hint="Host"
+                app:hintTextColor="@android:color/white"
+                app:boxStrokeColor="@android:color/white">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/vnc_host_input"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="127.0.0.1"
+                    android:textColor="@android:color/white"
+                    android:inputType="text"
+                    android:maxLines="1" />
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:hint="Port"
+                app:hintTextColor="@android:color/white"
+                app:boxStrokeColor="@android:color/white">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/vnc_port_input"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="5901"
+                    android:textColor="@android:color/white"
+                    android:inputType="number"
+                    android:maxLines="1" />
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:hint="Password"
+                app:hintTextColor="@android:color/white"
+                app:boxStrokeColor="@android:color/white"
+                app:passwordToggleEnabled="true">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/vnc_password_input"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="termos"
+                    android:textColor="@android:color/white"
+                    android:inputType="textPassword"
+                    android:maxLines="1" />
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/vnc_connect_button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="Connect"
+                android:textSize="16sp"
+                app:backgroundTint="@color/colorPrimary"
+                app:textColor="@android:color/white" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Local VNC server will be started automatically if not running.\n\nUse Settings → Install OS to set up the desktop environment."
+                android:textColor="@android:color/darker_gray"
+                android:textSize="14sp"
+                android:gravity="center"
+                android:layout_marginTop="32dp"
+                android:lineSpacingExtra="4dp" />
+
+        </LinearLayout>
+
+    </ScrollView>
+
+    <!-- Status overlay when VNC is connecting -->
     <LinearLayout
         android:id="@+id/vnc_status_overlay"
         android:layout_width="match_parent"
@@ -20,7 +127,8 @@
         android:orientation="vertical"
         android:gravity="center"
         android:background="@android:color/black"
-        android:padding="24dp">
+        android:padding="24dp"
+        android:visibility="gone">
 
         <TextView
             android:id="@+id/vnc_status_title"
@@ -36,7 +144,7 @@
             android:id="@+id/vnc_status_message"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Connecting to desktop environment..."
+            android:text="Connecting to VNC server..."
             android:textColor="@android:color/white"
             android:textSize="16sp"
             android:gravity="center"
@@ -52,11 +160,22 @@
             android:id="@+id/vnc_help_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Make sure the desktop environment is installed and VNC server is running.\n\nUse Settings → Install OS to set up the desktop environment."
+            android:text=""
             android:textColor="@android:color/darker_gray"
             android:textSize="14sp"
             android:gravity="center"
-            android:lineSpacingExtra="4dp" />
+            android:lineSpacingExtra="4dp"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/vnc_cancel_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Cancel"
+            android:textSize="14sp"
+            app:backgroundTint="@android:color/darker_gray"
+            app:textColor="@android:color/white" />
 
     </LinearLayout>
 

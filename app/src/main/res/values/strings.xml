@@ -250,4 +250,14 @@
     <!-- Donate Preference -->
     <string name="donate_preference_title">Donate</string>
 
+    <!-- VNC Settings -->
+    <string-array name="vnc_input_mode_entries">
+        <item>Touch Mode</item>
+        <item>Mouse Mode</item>
+    </string-array>
+    <string-array name="vnc_input_mode_values">
+        <item>touch</item>
+        <item>mouse</item>
+    </string-array>
+
 </resources>

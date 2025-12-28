@@ -34,6 +34,7 @@ public class OstabFragment extends Fragment {
     private Activity activity;
     private RemoteCanvas vncCanvas;
     private VNCConnectionManager vncManager;
+    private ScrollView connectionForm;
     private LinearLayout statusOverlay;
     private TextView statusTitle;
     private TextView statusMessage;
@@ -60,18 +61,22 @@ public class OstabFragment extends Fragment {
 
         // Initialize UI elements
         vncCanvas = root.findViewById(R.id.vnc_canvas);
+        connectionForm = root.findViewById(R.id.vnc_connection_form);
         statusOverlay = root.findViewById(R.id.vnc_status_overlay);
         statusTitle = root.findViewById(R.id.vnc_status_title);
         statusMessage = root.findViewById(R.id.vnc_status_message);
         helpText = root.findViewById(R.id.vnc_help_text);
         loadingProgress = root.findViewById(R.id.vnc_loading);
 
+        // Set up connection form
+        setupConnectionForm(root);
+
         vncManager = VNCConnectionManager.getInstance(activity);
         vncManager.setStatusCallback(this);
         uiHandler = new Handler(Looper.getMainLooper());
 
-        // Start with status overlay visible
-        showStatusOverlay("OS Desktop", "Initializing VNC connection...", "");
+        // Start with connection form visible
+        showConnectionForm();
 
         return root;
     }
@@ -81,11 +86,9 @@ public class OstabFragment extends Fragment {
     public void onResume() {
         super.onResume();
 
-        // Initialize and connect VNC when fragment becomes visible
+        // Initialize VNC manager when fragment becomes visible
         if (vncManager != null && vncCanvas != null && activity != null) {
             try {
-                showStatusOverlay("OS Desktop", "Initializing VNC connection...", "");
-
                 vncManager.initialize(vncCanvas, activity);
 
                 // Set service client for command execution
@@ -94,15 +97,85 @@ public class OstabFragment extends Fragment {
                     vncManager.setServiceClient(termuxActivity.getTermuxService().getTermuxTerminalSessionClient());
                 }
 
-                // Start connection with status updates
-                connectWithStatusUpdates();
+        // Show connection form instead of auto-connecting
+        showConnectionForm();
 
-            } catch (Exception e) {
-                Log.e(TAG, "Failed to initialize VNC connection", e);
-                showErrorStatus("Connection Failed", "Failed to initialize VNC: " + e.getMessage());
+    } catch (Exception e) {
+        Log.e(TAG, "Failed to initialize VNC connection", e);
+        showErrorStatus("Connection Failed", "Failed to initialize VNC: " + e.getMessage());
+    }
+} else {
+    showErrorStatus("Setup Error", "VNC components not available");
+}
+}
+
+    /**
+     * Set up the VNC connection form event listeners
+     */
+    private void setupConnectionForm(View root) {
+        com.google.android.material.button.MaterialButton connectButton = root.findViewById(R.id.vnc_connect_button);
+        com.google.android.material.button.MaterialButton cancelButton = root.findViewById(R.id.vnc_cancel_button);
+
+        connectButton.setOnClickListener(v -> {
+            com.google.android.material.textfield.TextInputEditText hostInput = root.findViewById(R.id.vnc_host_input);
+            com.google.android.material.textfield.TextInputEditText portInput = root.findViewById(R.id.vnc_port_input);
+            com.google.android.material.textfield.TextInputEditText passwordInput = root.findViewById(R.id.vnc_password_input);
+
+            String host = hostInput.getText().toString().trim();
+            String portStr = portInput.getText().toString().trim();
+            String password = passwordInput.getText().toString();
+
+            if (host.isEmpty()) {
+                hostInput.setError("Host is required");
+                return;
             }
-        } else {
-            showErrorStatus("Setup Error", "VNC components not available");
+
+            if (portStr.isEmpty()) {
+                portInput.setError("Port is required");
+                return;
+            }
+
+            int port;
+            try {
+                port = Integer.parseInt(portStr);
+                if (port < 1 || port > 65535) {
+                    portInput.setError("Port must be between 1 and 65535");
+                    return;
+                }
+            } catch (NumberFormatException e) {
+                portInput.setError("Invalid port number");
+                return;
+            }
+
+            if (password.isEmpty()) {
+                passwordInput.setError("Password is required");
+                return;
+            }
+
+            // Start connection
+            connectToVNC(host, port, password);
+        });
+
+        cancelButton.setOnClickListener(v -> {
+            // Cancel connection and return to form
+            if (vncManager != null) {
+                vncManager.disconnect();
+            }
+            showConnectionForm();
+        });
+    }
+
+    /**
+     * Connect to VNC server with the specified parameters
+     */
+    private void connectToVNC(String host, int port, String password) {
+        showStatusOverlay("Connecting", "Connecting to VNC server at " + host + ":" + port + "...", "");
+
+        try {
+            vncManager.connect(host, port, password);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to start VNC connection", e);
+            showErrorStatus("Connection Failed", "Failed to start connection: " + e.getMessage());
         }
     }
 
@@ -131,75 +204,22 @@ public class OstabFragment extends Fragment {
         }
     }
 
-    /**
-     * Connect to VNC with status updates
-     */
-    private void connectWithStatusUpdates() {
-        try {
-            showStatusOverlay("OS Desktop", "Starting VNC server...", "");
-
-            // Start connection after a brief delay to show status
-            uiHandler.postDelayed(() -> {
-                if (vncManager != null) {
-                    showStatusOverlay("OS Desktop", "Connecting to VNC server...\nWill retry every 5 seconds", "");
-                    vncManager.connect();
-                }
-            }, 500);
-
-            // Update status periodically to show retry attempts
-            startRetryStatusUpdates();
-
-            // Don't show timeout error too early - let the retry mechanism work
-            // The connection will retry every 5 seconds, so give it more time
-            uiHandler.postDelayed(() -> {
-                if (statusOverlay != null && statusOverlay.getVisibility() == View.VISIBLE && !isVncConnected) {
-                    showErrorStatus("Connection Timeout",
-                        "VNC connection is taking longer than expected.\n\n" +
-                        "This usually means:\n" +
-                        "• VNC server is not running\n" +
-                        "• Desktop environment is not installed\n" +
-                        "• Network connection issues\n\n" +
-                        "The app will continue retrying every 5 seconds.\n" +
-                        "Try running the desktop diagnostic in a terminal.");
-                }
-            }, 120000); // 2 minute timeout before showing error
-
-        } catch (Exception e) {
-            Log.e(TAG, "Error in connectWithStatusUpdates", e);
-            showErrorStatus("Connection Error", e.getMessage());
-        }
-    }
 
     /**
-     * Start periodic status updates showing retry attempts
+     * Show connection form
      */
-    private void startRetryStatusUpdates() {
-        Runnable statusUpdater = new Runnable() {
-            private int retryCount = 0;
-
-            @Override
-            public void run() {
-                if (statusOverlay == null || statusOverlay.getVisibility() != View.VISIBLE || isVncConnected) {
-                    return; // Stop updating if connected or overlay hidden
-                }
-
-                retryCount++;
-                String retryText = retryCount == 1 ? "Connecting to VNC server..." :
-                                 String.format("Retrying connection (attempt %d)...", retryCount);
-
-                uiHandler.post(() -> {
-                    if (statusMessage != null) {
-                        statusMessage.setText(retryText + "\nWill retry every 5 seconds");
-                    }
-                });
-
-                // Schedule next update in 5 seconds
-                uiHandler.postDelayed(this, 5000);
+    private void showConnectionForm() {
+        uiHandler.post(() -> {
+            if (connectionForm != null) {
+                connectionForm.setVisibility(View.VISIBLE);
             }
-        };
-
-        // Start status updates after 2 seconds
-        uiHandler.postDelayed(statusUpdater, 2000);
+            if (statusOverlay != null) {
+                statusOverlay.setVisibility(View.GONE);
+            }
+            if (vncCanvas != null) {
+                vncCanvas.setVisibility(View.GONE);
+            }
+        });
     }
 
     /**
@@ -211,6 +231,9 @@ public class OstabFragment extends Fragment {
         }
 
         uiHandler.post(() -> {
+            if (connectionForm != null) {
+                connectionForm.setVisibility(View.GONE);
+            }
             statusTitle.setText(title);
             statusMessage.setText(message);
             if (helpText != null && !helpText.isEmpty()) {
@@ -237,6 +260,9 @@ public class OstabFragment extends Fragment {
      */
     public void showVncCanvas() {
         uiHandler.post(() -> {
+            if (connectionForm != null) {
+                connectionForm.setVisibility(View.GONE);
+            }
             if (statusOverlay != null) {
                 statusOverlay.setVisibility(View.GONE);
             }
@@ -262,7 +288,7 @@ public class OstabFragment extends Fragment {
      */
     public void onVncConnectionFailed(String error) {
         uiHandler.post(() -> {
-            showErrorStatus("Connection Failed", error);
+            showErrorStatus("Connection Failed", error + "\n\nTap Cancel to return to connection form.");
             Log.e(TAG, "VNC connection failed: " + error);
         });
     }

@@ -20,6 +20,7 @@ import com.iiordanov.bVNC.protocol.RemoteVncConnection;
 import com.termos.app.linuxruntime.LinuxCommandExecutor;
 import com.termos.app.ui.OstabFragment;
 import com.termux.terminal.TerminalSessionClient;
+import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.undatech.opaque.RemoteClientLibConstants;
 import com.iiordanov.bVNC.protocol.RemoteConnection;
 
@@ -184,11 +185,51 @@ public class VNCConnectionManager {
             setModes
         );
 
+        // Apply input mode settings from preferences
+        applyInputModeSettings();
+
         Log.d(TAG, "VNC connection manager initialized");
 
         // Note: Connection is not started here. It will be started when connect() is called.
         // The ProgressDialog shown by RemoteConnection constructor will remain visible
         // until the connection actually starts or fails.
+    }
+
+    /**
+     * Apply input mode settings from preferences
+     */
+    private void applyInputModeSettings() {
+        if (context == null || handler == null) {
+            return;
+        }
+
+        TermuxAppSharedPreferences preferences = TermuxAppSharedPreferences.build(context, false);
+        if (preferences == null) {
+            return;
+        }
+
+        String inputMode = preferences.getVNCInputMode();
+        int inputModeId;
+
+        if ("mouse".equals(inputMode)) {
+            // Use touchpad mode for mouse-like behavior
+            inputModeId = com.iiordanov.bVNC.R.id.itemInputTouchpad;
+        } else {
+            // Default to touch mode (direct swipe pan)
+            inputModeId = com.iiordanov.bVNC.R.id.itemInputTouchPanZoomMouse;
+        }
+
+        // Apply the input mode
+        try {
+            boolean inputModeSet = ((com.iiordanov.bVNC.RemoteCanvasActivity) activityContext).setInputMode(inputModeId);
+            if (inputModeSet) {
+                Log.d(TAG, "Applied VNC input mode: " + inputMode);
+            } else {
+                Log.w(TAG, "Failed to apply VNC input mode: " + inputMode);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error applying VNC input mode", e);
+        }
     }
 
     /**
@@ -314,11 +355,13 @@ public class VNCConnectionManager {
     }
 
     /**
-     * Connect to VNC server.
-     * Auto-starts VNC server if not running.
-     * Call this when OS tab becomes visible.
+     * Connect to VNC server with specified parameters.
+     * Auto-starts VNC server if connecting to localhost and not running.
+     * @param host VNC server host
+     * @param port VNC server port
+     * @param password VNC password
      */
-    public void connect() {
+    public void connect(String host, int port, String password) {
         if (canvas == null || connection == null || remoteConnection == null) {
             Log.e(TAG, "Cannot connect: not initialized");
             return;
@@ -335,8 +378,33 @@ public class VNCConnectionManager {
             return;
         }
 
-        // Start continuous retry mechanism
-        startContinuousRetry();
+        // Update connection parameters
+        connection.setAddress(host);
+        connection.setPort(port);
+        connection.setPassword(password);
+        connection.setKeepPassword(true);
+
+        Log.d(TAG, "Connecting to VNC server at " + host + ":" + port);
+
+        // For localhost connections, auto-start VNC server if needed
+        if ("127.0.0.1".equals(host) || "localhost".equals(host)) {
+            startContinuousRetry();
+        } else {
+            // For remote connections, connect directly without starting local server
+            attemptConnection();
+        }
+    }
+
+    /**
+     * Connect to VNC server.
+     * Auto-starts VNC server if not running (legacy method for backward compatibility).
+     * Call this when OS tab becomes visible.
+     * @deprecated Use connect(String host, int port, String password) instead
+     */
+    @Deprecated
+    public void connect() {
+        // Default connection to localhost
+        connect(VNC_HOST, DEFAULT_VNC_PORT, "termos");
     }
     
     /**

@@ -258,4 +258,14 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
         SharedPreferenceUtils.setBoolean(mSharedPreferences, TERMUX_APP.KEY_CRASH_REPORT_NOTIFICATIONS_ENABLED, value, false);
     }
 
+
+
+    public String getVNCInputMode() {
+        return SharedPreferenceUtils.getString(mSharedPreferences, TERMUX_APP.KEY_VNC_INPUT_MODE, TERMUX_APP.DEFAULT_VALUE_VNC_INPUT_MODE);
+    }
+
+    public void setVNCInputMode(String value) {
+        SharedPreferenceUtils.setString(mSharedPreferences, TERMUX_APP.KEY_VNC_INPUT_MODE, value, false);
+    }
+
 }

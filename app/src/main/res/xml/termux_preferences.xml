@@ -15,4 +15,10 @@
         app:summary="@string/termux_terminal_view_preferences_summary"
         app:fragment="com.termux.app.fragments.settings.termux.TerminalViewPreferencesFragment"/>
 
+    <Preference
+        app:key="vnc"
+        app:title="VNC Settings"
+        app:summary="Configure VNC connection and input settings"
+        app:fragment="com.termos.app.fragments.settings.VNCPreferencesFragment"/>
+
 </PreferenceScreen>

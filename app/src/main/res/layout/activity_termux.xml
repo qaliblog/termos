@@ -34,7 +34,7 @@
                     android:layout_height="wrap_content"
                     android:background="?attr/termuxActivityDrawerBackground" />
 
-                <androidx.viewpager.widget.ViewPager
+                <com.termos.app.ui.NoSwipeViewPager
                     android:id="@+id/view_pager"
                     android:layout_width="match_parent"
                     android:layout_height="0dp"
@@ -103,7 +103,7 @@
 
         </androidx.drawerlayout.widget.DrawerLayout>
 
-        <androidx.viewpager.widget.ViewPager
+        <com.termos.app.ui.NoSwipeViewPager
             android:id="@+id/terminal_toolbar_view_pager"
             android:visibility="gone"
             android:layout_width="match_parent"
