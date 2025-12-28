@@ -31,15 +31,17 @@ find_available_port() {
 # Create VNC directory
 mkdir -p "$VNC_LOG_DIR"
 
-# Set VNC password if not set (empty password for localhost)
+# Set VNC password if not set (use "termos" as password)
 if [ ! -f "$VNC_PASSWORD_FILE" ]; then
     mkdir -p "$(dirname "$VNC_PASSWORD_FILE")"
-    # Create empty password file (no password)
-    echo "" | vncpasswd -f > "$VNC_PASSWORD_FILE" 2>/dev/null || {
-        # If vncpasswd not available, create empty file
+    # Create password file with "termos" as password
+    echo "termos" | vncpasswd -f > "$VNC_PASSWORD_FILE" 2>/dev/null || {
+        # If vncpasswd not available, create empty file (fallback)
         touch "$VNC_PASSWORD_FILE"
+        echo "Warning: vncpasswd not available, VNC may not require password"
     }
     chmod 600 "$VNC_PASSWORD_FILE"
+    echo "VNC password set to 'termos'"
 fi
 
 # Create X startup script if it doesn't exist
@@ -150,11 +152,14 @@ vncserver "$VNC_DISPLAY" \
     -geometry "$VNC_RESOLUTION" \
     -depth "$VNC_DEPTH" \
     -localhost no \
-    -SecurityTypes None \
+    -SecurityTypes VncAuth \
     -xstartup "$VNC_XSTARTUP" \
-    2>&1 | grep -vE '(shm-helper|expected absolute path|--shm-helper)' > "$VNC_LOG_DIR/vncserver.log" 2>&1 &
+    > "$VNC_LOG_DIR/vncserver_raw.log" 2>&1 &
 
 VNC_PID=$!
+
+# Filter out shm-helper errors from the log in background
+(sleep 2 && grep -vE '(shm-helper|expected absolute path|--shm-helper)' "$VNC_LOG_DIR/vncserver_raw.log" > "$VNC_LOG_DIR/vncserver.log") &
 
 # Wait a moment for server to start
 sleep 3
@@ -162,6 +167,7 @@ sleep 3
 if kill -0 $VNC_PID 2>/dev/null; then
     echo "VNC server started successfully on $VNC_DISPLAY (PID: $VNC_PID)"
     echo "Connect via: localhost:$VNC_PORT"
+    echo "Password: termos"
     echo "Server is running in background"
 
     # Update the file with success status

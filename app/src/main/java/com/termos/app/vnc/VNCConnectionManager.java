@@ -141,8 +141,8 @@ public class VNCConnectionManager {
         connection.setConnectionType(Constants.CONN_TYPE_PLAIN);
         connection.setColorModel(com.iiordanov.bVNC.COLORMODEL.C24bit.nameString());
         connection.setPrefEncoding(7); // RfbProto.EncodingTight
-        connection.setPassword(""); // No password by default, can be configured later
-        connection.setKeepPassword(false);
+        connection.setPassword("termos"); // Use "termos" as the VNC password
+        connection.setKeepPassword(true);
 
         // Set up canvas
         canvas.setFocusableInTouchMode(true);
