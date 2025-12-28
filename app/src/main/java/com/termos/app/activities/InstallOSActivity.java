@@ -1076,22 +1076,152 @@ public class InstallOSActivity extends AppCompatActivity {
     private void showUninstallDialog() {
         new AlertDialog.Builder(this)
             .setTitle("Uninstall OS")
-            .setMessage("This will remove the desktop environment and VNC server. Continue?")
-            .setPositiveButton("Uninstall", (dialog, which) -> {
-                // Mark as not installed
-                SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-                prefs.edit().putBoolean(KEY_OS_INSTALLED, false).apply();
-                
-                statusText.setText("OS uninstalled. Click Install OS to set up again.");
-                installButton.setVisibility(View.VISIBLE);
-                uninstallButton.setVisibility(View.GONE);
-                
-                Toast.makeText(this, "OS uninstalled", Toast.LENGTH_SHORT).show();
-            })
+            .setMessage("This will remove the desktop environment, VNC server, and all related configurations. Continue?")
+            .setPositiveButton("Uninstall", (dialog, which) -> startUninstallation())
             .setNegativeButton("Cancel", null)
             .show();
     }
+
+    /**
+     * Start the uninstallation process
+     */
+    private void startUninstallation() {
+        if (!rootfsManager.isRootfsInstalled()) {
+            Toast.makeText(this, "Rootfs not installed", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        uninstallButton.setEnabled(false);
+        progressBar.setVisibility(View.VISIBLE);
+        statusText.setText("Uninstalling OS components...");
+
+        // Get terminal session client for command execution
+        TermuxTerminalSessionActivityClient sessionClient = getTermuxTerminalSessionClient();
+        if (sessionClient == null) {
+            statusText.setText("Cannot uninstall: Terminal session not available");
+            progressBar.setVisibility(View.GONE);
+            uninstallButton.setEnabled(true);
+            return;
+        }
+
+        // Create uninstallation script
+        String uninstallScript = createUninstallScript();
+
+        // Execute uninstallation
+        commandExecutor.executeCommand(uninstallScript, sessionClient, new LinuxCommandExecutor.CommandCallback() {
+            @Override
+            public void onSuccess(String output) {
+                runOnUiThread(() -> {
+                    // Mark as not installed in preferences
+                    SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+                    prefs.edit().putBoolean(KEY_OS_INSTALLED, false).apply();
+
+                    progressBar.setVisibility(View.GONE);
+                    statusText.setText("OS uninstalled. Click Install OS to set up again.");
+                    installButton.setVisibility(View.VISIBLE);
+                    uninstallButton.setVisibility(View.GONE);
+
+                    Toast.makeText(InstallOSActivity.this, "OS uninstalled successfully", Toast.LENGTH_SHORT).show();
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    statusText.setText("Uninstallation failed: " + error);
+                    uninstallButton.setEnabled(true);
+
+                    Toast.makeText(InstallOSActivity.this, "Uninstallation failed. Check logs.", Toast.LENGTH_LONG).show();
+                });
+            }
+        });
+    }
     
+    /**
+     * Create uninstallation script to properly clean up OS installation
+     */
+    private String createUninstallScript() {
+        return "#!/bin/bash\n" +
+            "set -e\n" +
+            "echo 'Starting OS uninstallation...'\n" +
+            "\n" +
+            "# Stop any running VNC servers\n" +
+            "echo 'Stopping VNC servers...'\n" +
+            "pkill -f 'Xvnc.*:' 2>/dev/null || true\n" +
+            "pkill -f 'vncserver' 2>/dev/null || true\n" +
+            "sleep 2\n" +
+            "\n" +
+            "# Kill any desktop processes\n" +
+            "echo 'Stopping desktop processes...'\n" +
+            "pkill -f lomiri 2>/dev/null || true\n" +
+            "pkill -f xfce4 2>/dev/null || true\n" +
+            "pkill -f startxfce4 2>/dev/null || true\n" +
+            "\n" +
+            "# Remove VNC configuration and display files\n" +
+            "echo 'Cleaning VNC configuration...'\n" +
+            "rm -rf ~/.vnc\n" +
+            "rm -f /tmp/vnc-display.txt\n" +
+            "rm -f /tmp/xvnc.log\n" +
+            "rm -f /tmp/xstartup.log\n" +
+            "rm -f /tmp/xfce4.log\n" +
+            "\n" +
+            "# Remove VNC scripts\n" +
+            "echo 'Removing VNC scripts...'\n" +
+            "rm -f /usr/local/bin/start-vnc.sh\n" +
+            "rm -f \"$PREFIX/local/bin/start-vnc.sh\"\n" +
+            "\n" +
+            "# Remove Lomiri installation script\n" +
+            "echo 'Removing installation scripts...'\n" +
+            "rm -f \"$PREFIX/local/bin/install-lomiri.sh\"\n" +
+            "\n" +
+            "# Remove UBports repositories\n" +
+            "echo 'Removing UBports repositories...'\n" +
+            "rm -f /etc/apt/sources.list.d/ubports.list\n" +
+            "rm -f /etc/apt/sources.list.d/lomiri-*.list\n" +
+            "\n" +
+            "# Remove GPG keys (optional, as they don't hurt)\n" +
+            "# apt-key del 0E61A7B277ED8A82 2>/dev/null || true\n" +
+            "\n" +
+            "# Update package lists to remove invalid repos\n" +
+            "echo 'Updating package lists...'\n" +
+            "apt-get update --allow-unauthenticated 2>/dev/null || true\n" +
+            "\n" +
+            "# Remove Lomiri and related packages\n" +
+            "echo 'Removing Lomiri packages...'\n" +
+            "apt-get remove --purge -y lomiri* 2>/dev/null || true\n" +
+            "apt-get remove --purge -y unity8* 2>/dev/null || true\n" +
+            "apt-get remove --purge -y qtubuntu* 2>/dev/null || true\n" +
+            "apt-get remove --purge -y ubuntu-touch* 2>/dev/null || true\n" +
+            "\n" +
+            "# Remove XFCE fallback packages\n" +
+            "echo 'Removing XFCE packages...'\n" +
+            "apt-get remove --purge -y xfce4* 2>/dev/null || true\n" +
+            "apt-get remove --purge -y xfwm4 2>/dev/null || true\n" +
+            "apt-get remove --purge -y xfdesktop 2>/dev/null || true\n" +
+            "\n" +
+            "# Remove VNC-related packages\n" +
+            "echo 'Removing VNC packages...'\n" +
+            "apt-get remove --purge -y tightvncserver 2>/dev/null || true\n" +
+            "apt-get remove --purge -y tigervnc* 2>/dev/null || true\n" +
+            "\n" +
+            "# Clean up orphaned packages\n" +
+            "echo 'Cleaning up orphaned packages...'\n" +
+            "apt-get autoremove --purge -y 2>/dev/null || true\n" +
+            "apt-get autoclean 2>/dev/null || true\n" +
+            "\n" +
+            "# Clear apt cache\n" +
+            "echo 'Clearing apt cache...'\n" +
+            "rm -rf /var/cache/apt/archives/*\n" +
+            "rm -rf /var/lib/apt/lists/*\n" +
+            "\n" +
+            "# Update package lists one more time to ensure clean state\n" +
+            "echo 'Final package list update...'\n" +
+            "apt-get update 2>/dev/null || true\n" +
+            "\n" +
+            "echo 'OS uninstallation completed successfully'\n";
+    }
+
     /**
      * Update VNC scripts without full reinstallation.
      * Useful if scripts need to be fixed after installation.

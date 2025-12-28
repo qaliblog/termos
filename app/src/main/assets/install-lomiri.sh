@@ -30,47 +30,70 @@ apt-get update -qq || {
 UBUNTU_VERSION=$(lsb_release -cs 2>/dev/null || echo "jammy")
 echo "Detected Ubuntu version: $UBUNTU_VERSION"
 
+# Clean up any existing corrupted repositories first
+echo "[3/8] Cleaning up existing repositories..."
+rm -f /etc/apt/sources.list.d/ubports.list
+rm -f /etc/apt/sources.list.d/lomiri-*.list
+
+# Update package lists to clean state
+apt-get update --allow-unauthenticated 2>/dev/null || true
+
 # Add Ubuntu Touch repositories for Lomiri
 echo "[3/8] Adding Ubuntu Touch repositories..."
-if [ ! -f /etc/apt/sources.list.d/ubports.list ]; then
+if command -v lsb_release >/dev/null 2>&1; then
+    UBUNTU_VERSION=$(lsb_release -cs 2>/dev/null || echo "jammy")
+else
+    # Fallback if lsb_release not available
+    UBUNTU_VERSION="jammy"
+fi
+echo "Detected Ubuntu version: $UBUNTU_VERSION"
+
+# Test repository connectivity before adding
+echo "Testing UBports repository connectivity..."
+if curl -s --max-time 10 http://repo.ubports.com/dists/$UBUNTU_VERSION/Release >/dev/null 2>&1; then
+    echo "UBports repository is accessible"
+
     # Add UBports repository for Lomiri and Ubuntu Touch packages
     echo "deb http://repo.ubports.com/ $UBUNTU_VERSION main" > /etc/apt/sources.list.d/ubports.list
     echo "deb http://repo.ubports.com/ $UBUNTU_VERSION devel" >> /etc/apt/sources.list.d/ubports.list
     echo "UBports repository added"
 
-    # Add Ubuntu Touch PPA if available
-    if command -v add-apt-repository >/dev/null 2>&1; then
-        add-apt-repository -y ppa:ubports-developers/ppa 2>/dev/null || true
-        echo "Ubuntu Touch PPA added"
-    fi
-
     # Try to add GPG keys for UBports
     echo "Adding GPG keys..."
     apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 0E61A7B277ED8A82 2>/dev/null || {
-        echo "Warning: Could not add UBports GPG key"
-    }
-
-    # Add additional Lomiri repositories based on Ubuntu version
-    if [ -f /etc/os-release ]; then
-        . /etc/os-release
-        case "$VERSION_ID" in
-            "20.04")
-                echo "deb http://archive.ubuntu.com/ubuntu focal-proposed main universe" > /etc/apt/sources.list.d/lomiri-focal.list
-                ;;
-            "22.04"|"24.04")
-                # For newer Ubuntu versions, try to add Lomiri repos if available
-                echo "deb http://archive.ubuntu.com/ubuntu $UBUNTU_VERSION-proposed main universe" > /etc/apt/sources.list.d/lomiri-$UBUNTU_VERSION.list 2>/dev/null || true
-                ;;
-        esac
-    fi
-
-    # Update package lists
-    apt-get update -qq 2>/dev/null || {
-        echo "Warning: Failed to update repositories, continuing anyway..."
+        echo "Warning: Could not add UBports GPG key - continuing anyway"
     }
 else
-    echo "UBports repository already exists"
+    echo "Warning: UBports repository is not accessible. Lomiri may not be available."
+    echo "Will try to install XFCE as fallback desktop environment."
+    LOMIRI_REPO_AVAILABLE=false
 fi
+
+# Add Ubuntu Touch PPA if available and repository is accessible
+if [ "$LOMIRI_REPO_AVAILABLE" != "false" ] && command -v add-apt-repository >/dev/null 2>&1; then
+    add-apt-repository -y ppa:ubports-developers/ppa 2>/dev/null || true
+    echo "Ubuntu Touch PPA added"
+fi
+
+# Add additional Lomiri repositories based on Ubuntu version (only if UBports works)
+if [ "$LOMIRI_REPO_AVAILABLE" != "false" ] && [ -f /etc/os-release ]; then
+    . /etc/os-release
+    case "$VERSION_ID" in
+        "20.04")
+            echo "deb http://archive.ubuntu.com/ubuntu focal-proposed main universe" > /etc/apt/sources.list.d/lomiri-focal.list
+            ;;
+        "22.04"|"24.04")
+            # For newer Ubuntu versions, try to add Lomiri repos if available
+            echo "deb http://archive.ubuntu.com/ubuntu $UBUNTU_VERSION-proposed main universe" > /etc/apt/sources.list.d/lomiri-$UBUNTU_VERSION.list 2>/dev/null || true
+            ;;
+    esac
+fi
+
+# Update package lists
+echo "Updating package lists..."
+apt-get update --allow-unauthenticated 2>/dev/null || {
+    echo "Warning: Failed to update repositories, but continuing with installation..."
+}
 
 # Try to install Lomiri
 echo "[4/8] Attempting to install Lomiri..."
