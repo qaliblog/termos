@@ -470,7 +470,7 @@ public class VNCConnectionManager {
     @Deprecated
     public void connect() {
         // Default connection to localhost
-        connect(VNC_HOST, DEFAULT_VNC_PORT, "termos");
+        connect(VNC_HOST, DEFAULT_VNC_PORT, "", "termos");
     }
     
     /**
