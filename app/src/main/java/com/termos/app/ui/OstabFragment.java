@@ -170,7 +170,13 @@ public class OstabFragment extends Fragment {
      * Connect to VNC server with the specified parameters
      */
     private void connectToVNC(String host, int port, String password) {
-        showStatusOverlay("Connecting", "Connecting to VNC server at " + host + ":" + port + "...", "");
+        showStatusOverlay("Connecting",
+            "Connecting to VNC server...\n" +
+            "Host: " + host + "\n" +
+            "Port: " + port + "\n" +
+            "Using password authentication", "");
+
+        Log.d(TAG, "Attempting VNC connection to " + host + ":" + port);
 
         try {
             vncManager.connect(host, port, password);
@@ -289,7 +295,13 @@ public class OstabFragment extends Fragment {
      */
     public void onVncConnectionFailed(String error) {
         uiHandler.post(() -> {
-            showErrorStatus("Connection Failed", error + "\n\nTap Cancel to return to connection form.");
+            showErrorStatus("Connection Failed",
+                error + "\n\nPossible solutions:\n" +
+                "• Check if VNC server is running\n" +
+                "• Verify host, port, and password\n" +
+                "• Try different authentication method\n" +
+                "• Check network connectivity\n\n" +
+                "Tap Cancel to return to connection form.");
             Log.e(TAG, "VNC connection failed: " + error);
         });
     }

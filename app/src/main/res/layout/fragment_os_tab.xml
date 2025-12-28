@@ -108,9 +108,9 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Local VNC server will be started automatically if not running.\n\nUse Settings → Install OS to set up the desktop environment."
+                android:text="Local VNC server will be started automatically if not running.\n\nUse Settings → Install OS to set up the desktop environment.\n\nTroubleshooting: If connection fails, try:\n• Different VNC server password\n• Alternative port (5900-5909)\n• Check if another VNC server is running"
                 android:textColor="@android:color/darker_gray"
-                android:textSize="14sp"
+                android:textSize="12sp"
                 android:gravity="center"
                 android:layout_marginTop="32dp"
                 android:lineSpacingExtra="4dp" />
