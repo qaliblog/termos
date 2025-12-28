@@ -108,7 +108,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Local VNC server will be started automatically if not running.\n\nUse Settings → Install OS to set up the desktop environment.\n\nTroubleshooting: If connection fails, try:\n• Different VNC server password\n• Alternative port (5900-5909)\n• Check if another VNC server is running"
+                android:text="Local VNC server will be started automatically if not running.\n\nUse Settings → Install OS to set up the desktop environment.\n\nTroubleshooting: If you can connect with RVNC Viewer but not Termos:\n• Use the exact same host/port/password from RVNC Viewer\n• Try ports: 5900, 5901, 5902 (common VNC ports)\n• Some servers don't require password - try empty password\n• Check if server uses different authentication method"
                 android:textColor="@android:color/darker_gray"
                 android:textSize="12sp"
                 android:gravity="center"

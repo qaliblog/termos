@@ -333,11 +333,9 @@ public class VNCConnectionManager {
             }
         }, CONNECTION_TIMEOUT_MS);
 
-        // Read VNC port from file before connecting
-        readAndSetVNCPort(() -> {
-            Log.d(TAG, "Connecting to VNC server at " + VNC_HOST + ":" + connection.getPort() + " (attempt " + connectionRetryCount + ")");
-            doConnectAfterPortSet();
-        });
+        // For manual connections, skip VNC server auto-start and connect directly
+        Log.d(TAG, "Connecting to VNC server at " + connection.getAddress() + ":" + connection.getPort() + " (attempt " + connectionRetryCount + ")");
+        doDirectConnect();
     }
 
     /**
@@ -380,15 +378,11 @@ public class VNCConnectionManager {
         connection.setPassword(password);
         connection.setKeepPassword(true);
 
-        Log.d(TAG, "Connecting to VNC server at " + host + ":" + port);
+        Log.d(TAG, "Connecting to VNC server at " + host + ":" + port + " (user provided credentials)");
 
-        // For localhost connections, auto-start VNC server if needed
-        if ("127.0.0.1".equals(host) || "localhost".equals(host)) {
-            startContinuousRetry();
-        } else {
-            // For remote connections, connect directly without starting local server
-            attemptConnection();
-        }
+        // Since user manually provided connection details, assume they know the server is running
+        // Don't try to auto-start VNC server - just attempt direct connection
+        attemptConnection();
     }
 
     /**
@@ -403,6 +397,45 @@ public class VNCConnectionManager {
         connect(VNC_HOST, DEFAULT_VNC_PORT, "termos");
     }
     
+    /**
+     * Connect directly to VNC server without auto-starting
+     */
+    private void doDirectConnect() {
+        // Check retry limit
+        if (connectionRetryCount >= MAX_CONNECTION_RETRIES) {
+            Log.e(TAG, "Max connection retries reached, giving up");
+            // Dismiss progress dialog if connection failed
+            dismissProgressDialog();
+            return;
+        }
+
+        connectionRetryCount++;
+
+        // Check if VNC server is actually listening on the port
+        if (serviceClient != null) {
+            commandExecutor.checkVNCServerRunning(serviceClient, new LinuxCommandExecutor.ServerCheckCallback() {
+                @Override
+                public void onResult(boolean isRunning) {
+                    if (isRunning) {
+                        Log.d(TAG, "VNC server confirmed listening, connecting...");
+                        connectionRetryCount = 0; // Reset retry count on success
+                        doConnect();
+                    } else {
+                        Log.w(TAG, "VNC server not listening (attempt " + connectionRetryCount + "/" + MAX_CONNECTION_RETRIES + "), retrying...");
+                        // Retry after a delay
+                        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                            doDirectConnect();
+                        }, 1000);
+                    }
+                }
+            });
+        } else {
+            // No service client available, try to connect directly
+            Log.w(TAG, "No service client, attempting direct connection");
+            doConnect();
+        }
+    }
+
     /**
      * Read VNC port from file and set it on the connection, then proceed with connection.
      */
