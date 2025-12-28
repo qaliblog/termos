@@ -209,24 +209,20 @@ public class VNCConnectionManager {
         }
 
         String inputMode = preferences.getVNCInputMode();
-        int inputModeId;
+        String inputModeString;
 
         if ("mouse".equals(inputMode)) {
             // Use touchpad mode for mouse-like behavior
-            inputModeId = com.iiordanov.bVNC.R.id.itemInputTouchpad;
+            inputModeString = com.iiordanov.bVNC.input.TouchInputHandlerTouchpad.ID;
         } else {
             // Default to touch mode (direct swipe pan)
-            inputModeId = com.iiordanov.bVNC.R.id.itemInputTouchPanZoomMouse;
+            inputModeString = com.iiordanov.bVNC.input.TouchInputHandlerDirectSwipePan.ID;
         }
 
-        // Apply the input mode
+        // Apply the input mode directly to the connection
         try {
-            boolean inputModeSet = ((com.iiordanov.bVNC.RemoteCanvasActivity) activityContext).setInputMode(inputModeId);
-            if (inputModeSet) {
-                Log.d(TAG, "Applied VNC input mode: " + inputMode);
-            } else {
-                Log.w(TAG, "Failed to apply VNC input mode: " + inputMode);
-            }
+            connection.setInputMode(inputModeString);
+            Log.d(TAG, "Applied VNC input mode: " + inputMode + " (" + inputModeString + ")");
         } catch (Exception e) {
             Log.e(TAG, "Error applying VNC input mode", e);
         }
