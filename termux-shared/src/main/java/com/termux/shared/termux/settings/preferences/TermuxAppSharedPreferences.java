@@ -23,6 +23,10 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
 
     private static final String LOG_TAG = "TermuxAppSharedPreferences";
 
+    // VNC input mode constants
+    private static final String KEY_VNC_INPUT_MODE = "vnc_input_mode";
+    private static final String DEFAULT_VALUE_VNC_INPUT_MODE = "touch";
+
     private TermuxAppSharedPreferences(@NonNull Context context) {
         super(context,
             SharedPreferenceUtils.getPrivateSharedPreferences(context,
@@ -261,11 +265,11 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
 
 
     public String getVNCInputMode() {
-        return SharedPreferenceUtils.getString(mSharedPreferences, TERMUX_APP.KEY_VNC_INPUT_MODE, TERMUX_APP.DEFAULT_VALUE_VNC_INPUT_MODE);
+        return SharedPreferenceUtils.getString(mSharedPreferences, KEY_VNC_INPUT_MODE, DEFAULT_VALUE_VNC_INPUT_MODE);
     }
 
     public void setVNCInputMode(String value) {
-        SharedPreferenceUtils.setString(mSharedPreferences, TERMUX_APP.KEY_VNC_INPUT_MODE, value, false);
+        SharedPreferenceUtils.setString(mSharedPreferences, KEY_VNC_INPUT_MODE, value, false);
     }
 
 }

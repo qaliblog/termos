@@ -260,12 +260,6 @@ public final class TermuxPreferenceConstants {
         public static final String KEY_TERMINAL_VIEW_KEY_LOGGING_ENABLED = "terminal_view_key_logging_enabled";
         public static final boolean DEFAULT_VALUE_TERMINAL_VIEW_KEY_LOGGING_ENABLED = false;
 
-        /**
-         * Defines the key for VNC input mode (touch or mouse)
-         */
-        public static final String KEY_VNC_INPUT_MODE = "vnc_input_mode";
-        public static final String DEFAULT_VALUE_VNC_INPUT_MODE = "touch";
-
     }
 
 
