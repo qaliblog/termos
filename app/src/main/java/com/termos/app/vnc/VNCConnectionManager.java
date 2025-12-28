@@ -219,16 +219,53 @@ public class VNCConnectionManager {
                     return;
                 }
 
-                Log.d(TAG, "Attempting connection retry...");
-                connect();
+                // Only retry if we haven't exceeded max retries per attempt
+                if (connectionRetryCount < MAX_CONNECTION_RETRIES) {
+                    Log.d(TAG, "Attempting connection retry (attempt " + (connectionRetryCount + 1) + "/" + MAX_CONNECTION_RETRIES + ")...");
+                    attemptConnection();
+                } else {
+                    Log.w(TAG, "Max retries reached, stopping continuous retry");
+                    // Reset counter for next manual retry
+                    connectionRetryCount = 0;
+                    return;
+                }
 
                 // Schedule next retry in 5 seconds if still not connected
                 retryHandler.postDelayed(this, CONNECTION_RETRY_INTERVAL_MS);
             }
         };
 
-        // Start first retry immediately
+        // Reset retry counter and start first retry immediately
+        connectionRetryCount = 0;
         retryHandler.post(retryRunnable);
+    }
+
+    /**
+     * Attempt a single VNC connection without starting continuous retry
+     */
+    private void attemptConnection() {
+        connectionRetryCount++;
+
+        // Cancel any existing timeout handler
+        if (timeoutHandler != null) {
+            timeoutHandler.removeCallbacksAndMessages(null);
+        }
+
+        // Set up timeout handler for this attempt
+        timeoutHandler = new Handler(Looper.getMainLooper());
+        timeoutHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                Log.w(TAG, "Connection attempt " + connectionRetryCount + " timed out");
+                dismissProgressDialog();
+            }
+        }, CONNECTION_TIMEOUT_MS);
+
+        // Read VNC port from file before connecting
+        readAndSetVNCPort(() -> {
+            Log.d(TAG, "Connecting to VNC server at " + VNC_HOST + ":" + connection.getPort() + " (attempt " + connectionRetryCount + ")");
+            doConnectAfterPortSet();
+        });
     }
 
     /**
@@ -251,78 +288,20 @@ public class VNCConnectionManager {
             Log.e(TAG, "Cannot connect: not initialized");
             return;
         }
-        
+
         if (isConnected && !isPaused) {
             Log.d(TAG, "Already connected");
             return;
         }
-        
+
         if (isPaused) {
             // Resume connection
             resume();
             return;
         }
 
-        // Reset retry count when starting a new connection attempt
-        connectionRetryCount = 0;
-
         // Start continuous retry mechanism
         startContinuousRetry();
-        
-        // Cancel any existing timeout handler
-        if (timeoutHandler != null) {
-            timeoutHandler.removeCallbacksAndMessages(null);
-        }
-        
-        // Set up timeout handler early to ensure dialog is dismissed if connection hangs
-        timeoutHandler = new Handler(Looper.getMainLooper());
-        timeoutHandler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                // Check if dialog is still showing (connection hasn't completed)
-                boolean dialogShowing = false;
-                if (customProgressDialog != null && customProgressDialog.isShowing()) {
-                    dialogShowing = true;
-                } else if (remoteConnection != null && remoteConnection.pd != null && remoteConnection.pd.isShowing()) {
-                    dialogShowing = true;
-                }
-                
-                if (dialogShowing) {
-                    Log.w(TAG, "Connection timeout - dismissing progress dialog and closing connection");
-                    try {
-                        // Try to close the connection if it's stuck
-                        if (remoteConnection != null) {
-                            try {
-                                remoteConnection.closeConnection();
-                            } catch (Exception e) {
-                                Log.e(TAG, "Error closing connection on timeout", e);
-                            }
-                        }
-                        // Dismiss the dialog(s)
-                        dismissProgressDialog();
-                        Log.d(TAG, "Progress dialog dismissed due to timeout");
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error dismissing progress dialog on timeout", e);
-                        // Force dismiss using activity context if available
-                        if (activityContext != null) {
-                            try {
-                                activityContext.runOnUiThread(() -> {
-                                    dismissProgressDialog();
-                                });
-                            } catch (Exception e2) {
-                                Log.e(TAG, "Failed to force dismiss dialog", e2);
-                            }
-                        }
-                    }
-                }
-            }
-        }, CONNECTION_TIMEOUT_MS);
-        
-        // Read VNC port from file before connecting
-        readAndSetVNCPort(() -> {
-            Log.d(TAG, "Connecting to VNC server at " + VNC_HOST + ":" + connection.getPort());
-            doConnectAfterPortSet();
-        });
     }
     
     /**

@@ -194,7 +194,9 @@ public class LinuxCommandExecutor {
                     
                     // Execute VNC startup command
                     // Use bash explicitly and ensure script is executable
-                    String fullCommand = "bash " + vncCommand + " 2>&1";
+                    // Make sure the script is executable first
+                    String chmodCommand = "chmod +x " + vncCommand + " 2>/dev/null || true";
+                    String fullCommand = chmodCommand + " && " + "bash " + vncCommand + " 2>&1";
                     Log.d(TAG, "Full VNC command: " + fullCommand);
                     
                     executeCommand(fullCommand, serviceClient, new CommandCallback() {

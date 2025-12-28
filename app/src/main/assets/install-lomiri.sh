@@ -33,7 +33,7 @@ echo "Detected Ubuntu version: $UBUNTU_VERSION"
 # Add Ubuntu Touch repositories for Lomiri
 echo "[3/8] Adding Ubuntu Touch repositories..."
 if [ ! -f /etc/apt/sources.list.d/ubports.list ]; then
-    # Add UBports repository
+    # Add UBports repository for Lomiri and Ubuntu Touch packages
     echo "deb http://repo.ubports.com/ $UBUNTU_VERSION main" > /etc/apt/sources.list.d/ubports.list
     echo "deb http://repo.ubports.com/ $UBUNTU_VERSION devel" >> /etc/apt/sources.list.d/ubports.list
     echo "UBports repository added"
@@ -44,20 +44,27 @@ if [ ! -f /etc/apt/sources.list.d/ubports.list ]; then
         echo "Ubuntu Touch PPA added"
     fi
 
-    # Try to add GPG keys
+    # Try to add GPG keys for UBports
     echo "Adding GPG keys..."
     apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 0E61A7B277ED8A82 2>/dev/null || {
         echo "Warning: Could not add UBports GPG key"
     }
 
-    # Add Lomiri repository if available
+    # Add additional Lomiri repositories based on Ubuntu version
     if [ -f /etc/os-release ]; then
         . /etc/os-release
-        if [ "$ID" = "ubuntu" ] && [ "$VERSION_ID" = "20.04" ]; then
-            echo "deb http://archive.ubuntu.com/ubuntu focal-proposed main universe" > /etc/apt/sources.list.d/lomiri-focal.list
-        fi
+        case "$VERSION_ID" in
+            "20.04")
+                echo "deb http://archive.ubuntu.com/ubuntu focal-proposed main universe" > /etc/apt/sources.list.d/lomiri-focal.list
+                ;;
+            "22.04"|"24.04")
+                # For newer Ubuntu versions, try to add Lomiri repos if available
+                echo "deb http://archive.ubuntu.com/ubuntu $UBUNTU_VERSION-proposed main universe" > /etc/apt/sources.list.d/lomiri-$UBUNTU_VERSION.list 2>/dev/null || true
+                ;;
+        esac
     fi
 
+    # Update package lists
     apt-get update -qq 2>/dev/null || {
         echo "Warning: Failed to update repositories, continuing anyway..."
     }

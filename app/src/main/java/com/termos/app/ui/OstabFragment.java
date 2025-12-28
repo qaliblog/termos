@@ -40,6 +40,7 @@ public class OstabFragment extends Fragment {
     private TextView helpText;
     private ProgressBar loadingProgress;
     private Handler uiHandler;
+    private boolean isVncConnected = false;
 
 
     @Override
@@ -140,28 +141,65 @@ public class OstabFragment extends Fragment {
             // Start connection after a brief delay to show status
             uiHandler.postDelayed(() -> {
                 if (vncManager != null) {
-                    showStatusOverlay("OS Desktop", "Connecting to VNC server...", "");
+                    showStatusOverlay("OS Desktop", "Connecting to VNC server...\nWill retry every 5 seconds", "");
                     vncManager.connect();
                 }
             }, 500);
 
-            // Set up a timeout to show error if connection takes too long
+            // Update status periodically to show retry attempts
+            startRetryStatusUpdates();
+
+            // Don't show timeout error too early - let the retry mechanism work
+            // The connection will retry every 5 seconds, so give it more time
             uiHandler.postDelayed(() -> {
-                if (statusOverlay != null && statusOverlay.getVisibility() == View.VISIBLE) {
+                if (statusOverlay != null && statusOverlay.getVisibility() == View.VISIBLE && !isVncConnected) {
                     showErrorStatus("Connection Timeout",
                         "VNC connection is taking longer than expected.\n\n" +
                         "This usually means:\n" +
                         "• VNC server is not running\n" +
                         "• Desktop environment is not installed\n" +
                         "• Network connection issues\n\n" +
+                        "The app will continue retrying every 5 seconds.\n" +
                         "Try running the desktop diagnostic in a terminal.");
                 }
-            }, 30000); // 30 second timeout
+            }, 120000); // 2 minute timeout before showing error
 
         } catch (Exception e) {
             Log.e(TAG, "Error in connectWithStatusUpdates", e);
             showErrorStatus("Connection Error", e.getMessage());
         }
+    }
+
+    /**
+     * Start periodic status updates showing retry attempts
+     */
+    private void startRetryStatusUpdates() {
+        Runnable statusUpdater = new Runnable() {
+            private int retryCount = 0;
+
+            @Override
+            public void run() {
+                if (statusOverlay == null || statusOverlay.getVisibility() != View.VISIBLE || isVncConnected) {
+                    return; // Stop updating if connected or overlay hidden
+                }
+
+                retryCount++;
+                String retryText = retryCount == 1 ? "Connecting to VNC server..." :
+                                 String.format("Retrying connection (attempt %d)...", retryCount);
+
+                uiHandler.post(() -> {
+                    if (statusMessage != null) {
+                        statusMessage.setText(retryText + "\nWill retry every 5 seconds");
+                    }
+                });
+
+                // Schedule next update in 5 seconds
+                uiHandler.postDelayed(this, 5000);
+            }
+        };
+
+        // Start status updates after 2 seconds
+        uiHandler.postDelayed(statusUpdater, 2000);
     }
 
     /**
@@ -212,6 +250,7 @@ public class OstabFragment extends Fragment {
      * Called by VNC manager when connection succeeds
      */
     public void onVncConnected() {
+        isVncConnected = true;
         uiHandler.post(() -> {
             showVncCanvas();
             Log.d(TAG, "VNC connection successful - showing canvas");

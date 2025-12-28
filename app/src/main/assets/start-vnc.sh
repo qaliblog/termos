@@ -111,27 +111,41 @@ vncserver -kill "$VNC_DISPLAY" >/dev/null 2>&1 || true
 
 # Start VNC server
 echo "Starting VNC server on display $VNC_DISPLAY (port $VNC_PORT)..."
+
+# Write port information to file BEFORE starting server (for immediate reading)
+mkdir -p "$(dirname "$VNC_DISPLAY_FILE")"
+echo "display:$VNC_DISPLAY" > "$VNC_DISPLAY_FILE"
+echo "port:$VNC_PORT" >> "$VNC_DISPLAY_FILE"
+echo "resolution:$VNC_RESOLUTION" >> "$VNC_DISPLAY_FILE"
+echo "started:$(date +%s)" >> "$VNC_DISPLAY_FILE"
+echo "VNC port information written to $VNC_DISPLAY_FILE"
+
+# Start VNC server in background
 vncserver "$VNC_DISPLAY" \
     -geometry "$VNC_RESOLUTION" \
     -depth "$VNC_DEPTH" \
     -localhost no \
     -SecurityTypes None \
     -xstartup "$VNC_XSTARTUP" \
-    > "$VNC_LOG_DIR/vncserver.log" 2>&1
+    > "$VNC_LOG_DIR/vncserver.log" 2>&1 &
 
-if [ $? -eq 0 ]; then
-    echo "VNC server started successfully on $VNC_DISPLAY"
+VNC_PID=$!
+
+# Wait a moment for server to start
+sleep 3
+
+if kill -0 $VNC_PID 2>/dev/null; then
+    echo "VNC server started successfully on $VNC_DISPLAY (PID: $VNC_PID)"
     echo "Connect via: localhost:$VNC_PORT"
+    echo "Server is running in background"
 
-    # Write port information to file for client to read
-    mkdir -p "$(dirname "$VNC_DISPLAY_FILE")"
-    echo "display:$VNC_DISPLAY" > "$VNC_DISPLAY_FILE"
-    echo "port:$VNC_PORT" >> "$VNC_DISPLAY_FILE"
-    echo "resolution:$VNC_RESOLUTION" >> "$VNC_DISPLAY_FILE"
-    echo "started:$(date +%s)" >> "$VNC_DISPLAY_FILE"
-    echo "VNC port information written to $VNC_DISPLAY_FILE"
+    # Update the file with success status
+    echo "status:running" >> "$VNC_DISPLAY_FILE"
+    echo "pid:$VNC_PID" >> "$VNC_DISPLAY_FILE"
 else
     echo "Failed to start VNC server. Check logs: $VNC_LOG_DIR/vncserver.log"
+    # Update the file with failure status
+    echo "status:failed" >> "$VNC_DISPLAY_FILE"
     exit 1
 fi
 
