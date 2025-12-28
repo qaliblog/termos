@@ -1,11 +1,14 @@
 package com.termos.app.activities;
 
 import android.app.AlertDialog;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -16,6 +19,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.termos.R;
+import com.termos.app.TermuxService;
 import com.termos.app.linuxruntime.LinuxCommandExecutor;
 import com.termos.app.linuxruntime.RootfsManager;
 import com.termux.shared.shell.command.ExecutionCommand;
@@ -29,7 +33,7 @@ import java.io.File;
  * Activity to install desktop environment and VNC server for OS tab.
  * Installs Lomiri desktop environment (Ubuntu Touch's desktop) and sets up VNC server.
  */
-public class InstallOSActivity extends AppCompatActivity {
+public class InstallOSActivity extends AppCompatActivity implements ServiceConnection {
     private static final String TAG = "InstallOSActivity";
     private static final String PREFS_NAME = "termos_os_install";
     private static final String KEY_OS_INSTALLED = "os_installed";
@@ -40,6 +44,7 @@ public class InstallOSActivity extends AppCompatActivity {
     private TextView statusText;
     private Button installButton;
     private Button uninstallButton;
+    private TermuxService termuxService;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,9 +53,12 @@ public class InstallOSActivity extends AppCompatActivity {
         
         rootfsManager = new RootfsManager(this);
         commandExecutor = new LinuxCommandExecutor(this);
-        
+
         initializeViews();
         checkInstallationStatus();
+
+        // Bind to TermuxService to access terminal functionality
+        bindToTermuxService();
     }
     
     private void initializeViews() {
@@ -66,7 +74,7 @@ public class InstallOSActivity extends AppCompatActivity {
     private void checkInstallationStatus() {
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         boolean isInstalled = prefs.getBoolean(KEY_OS_INSTALLED, false);
-        
+
         if (isInstalled) {
             statusText.setText("OS is installed. Desktop environment and VNC server are ready.");
             installButton.setVisibility(View.GONE);
@@ -76,6 +84,35 @@ public class InstallOSActivity extends AppCompatActivity {
             installButton.setVisibility(View.VISIBLE);
             uninstallButton.setVisibility(View.GONE);
         }
+    }
+
+    private void bindToTermuxService() {
+        try {
+            // Start the TermuxService and bind to it
+            Intent serviceIntent = new Intent(this, TermuxService.class);
+            startService(serviceIntent);
+
+            // Attempt to bind to the service
+            if (!bindService(serviceIntent, this, 0)) {
+                Log.e(TAG, "Failed to bind to TermuxService");
+                Toast.makeText(this, "Cannot connect to terminal service", Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error binding to TermuxService", e);
+            Toast.makeText(this, "Cannot connect to terminal service: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    public void onServiceConnected(ComponentName componentName, IBinder service) {
+        Log.d(TAG, "Connected to TermuxService");
+        termuxService = ((TermuxService.LocalBinder) service).service;
+    }
+
+    @Override
+    public void onServiceDisconnected(ComponentName componentName) {
+        Log.d(TAG, "Disconnected from TermuxService");
+        termuxService = null;
     }
     
     private void startInstallation() {
@@ -1096,7 +1133,14 @@ public class InstallOSActivity extends AppCompatActivity {
         statusText.setText("Uninstalling OS components...");
 
         // Get terminal session client for command execution
-        TermuxTerminalSessionActivityClient sessionClient = getTermuxTerminalSessionClient();
+        if (termuxService == null) {
+            statusText.setText("Cannot uninstall: Terminal service not available");
+            progressBar.setVisibility(View.GONE);
+            uninstallButton.setEnabled(true);
+            return;
+        }
+
+        com.termux.terminal.TerminalSessionClient sessionClient = termuxService.getTermuxTerminalSessionClient();
         if (sessionClient == null) {
             statusText.setText("Cannot uninstall: Terminal session not available");
             progressBar.setVisibility(View.GONE);
@@ -1326,6 +1370,17 @@ public class InstallOSActivity extends AppCompatActivity {
                 statusText.setText("Update failed: " + (errorMessage != null ? errorMessage : "Unknown error"));
                 Toast.makeText(InstallOSActivity.this, "Update failed", Toast.LENGTH_SHORT).show();
             }
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        // Unbind from TermuxService
+        if (termuxService != null) {
+            unbindService(this);
+            termuxService = null;
         }
     }
 }
