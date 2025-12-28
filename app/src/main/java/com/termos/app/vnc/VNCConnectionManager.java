@@ -255,13 +255,10 @@ public class VNCConnectionManager {
                     Log.w(TAG, "Max retries reached, stopping continuous retry");
                     // Provide user feedback about the failure
                     if (statusCallbackFragment != null) {
-                        statusCallbackFragment.runOnUiThread(() -> {
-                            statusCallbackFragment.showErrorStatus(
-                                "Connection Failed",
-                                "Unable to connect to VNC server after " + MAX_CONNECTION_RETRIES + " attempts. " +
-                                "Check that the OS is properly installed and try restarting the app."
-                            );
-                        });
+                        statusCallbackFragment.onVncConnectionFailed(
+                            "Unable to connect to VNC server after " + MAX_CONNECTION_RETRIES + " attempts. " +
+                            "Check that the OS is properly installed and try restarting the app."
+                        );
                     }
                     // Reset counter for next manual retry
                     connectionRetryCount = 0;
