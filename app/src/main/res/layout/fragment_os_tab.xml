@@ -9,15 +9,56 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:focusable="true"
-        android:focusableInTouchMode="true" />
-
-    <!-- Optional: Loading indicator -->
-    <ProgressBar
-        android:id="@+id/vnc_loading"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
+        android:focusableInTouchMode="true"
         android:visibility="gone" />
+
+    <!-- Status overlay when VNC is not connected -->
+    <LinearLayout
+        android:id="@+id/vnc_status_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:background="@android:color/black"
+        android:padding="24dp">
+
+        <TextView
+            android:id="@+id/vnc_status_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="OS Desktop"
+            android:textColor="@android:color/white"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:id="@+id/vnc_status_message"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Connecting to desktop environment..."
+            android:textColor="@android:color/white"
+            android:textSize="16sp"
+            android:gravity="center"
+            android:layout_marginBottom="24dp" />
+
+        <ProgressBar
+            android:id="@+id/vnc_loading"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp" />
+
+        <TextView
+            android:id="@+id/vnc_help_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Make sure the desktop environment is installed and VNC server is running.\n\nUse Settings → Install OS to set up the desktop environment."
+            android:textColor="@android:color/darker_gray"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:lineSpacingExtra="4dp" />
+
+    </LinearLayout>
 
 </FrameLayout>
 

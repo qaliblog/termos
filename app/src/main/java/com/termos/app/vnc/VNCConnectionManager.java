@@ -10,6 +10,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.Window;
 import android.widget.ImageButton;
+import com.termos.app.ui.OstabFragment;
 import com.termos.R;
 import com.iiordanov.bVNC.ConnectionBean;
 import com.iiordanov.bVNC.Constants;
@@ -17,6 +18,7 @@ import com.iiordanov.bVNC.RemoteCanvas;
 import com.iiordanov.bVNC.input.RemoteCanvasHandler;
 import com.iiordanov.bVNC.protocol.RemoteVncConnection;
 import com.termos.app.linuxruntime.LinuxCommandExecutor;
+import com.termos.app.ui.OstabFragment;
 import com.termux.terminal.TerminalSessionClient;
 import com.undatech.opaque.RemoteClientLibConstants;
 import com.iiordanov.bVNC.protocol.RemoteConnection;
@@ -89,11 +91,13 @@ public class VNCConnectionManager {
     private static final int CONNECTION_RETRY_INTERVAL_MS = 5000; // 5 seconds between connection retries
     private Handler timeoutHandler;
     private Handler retryHandler;
+    private Handler uiHandler;
     private AlertDialog customProgressDialog; // Custom dialog with close button
     
     private VNCConnectionManager(Context context) {
         this.context = context.getApplicationContext();
         this.commandExecutor = new LinuxCommandExecutor(context);
+        this.uiHandler = new Handler(Looper.getMainLooper());
     }
     
     /**
@@ -123,10 +127,10 @@ public class VNCConnectionManager {
             Log.d(TAG, "Already initialized, skipping");
             return;
         }
-        
+
         this.canvas = canvas;
         this.activityContext = activityContext; // Store Activity context for UI operations
-        
+
         // Create connection bean for localhost VNC
         // Use activity context for ConnectionBean as it may need Activity context
         connection = new ConnectionBean(activityContext);
@@ -139,11 +143,11 @@ public class VNCConnectionManager {
         connection.setPrefEncoding(7); // RfbProto.EncodingTight
         connection.setPassword(""); // No password by default, can be configured later
         connection.setKeepPassword(false);
-        
+
         // Set up canvas
         canvas.setFocusableInTouchMode(true);
         canvas.setDrawingCacheEnabled(false);
-        
+
         // Create remote connection directly (VNC connection)
         // We use RemoteVncConnection directly instead of RemoteConnectionFactory
         // because the factory checks package name which doesn't contain "vnc"
@@ -153,25 +157,25 @@ public class VNCConnectionManager {
         Runnable hideKeyboardAndExtraKeys = () -> {
             // No-op for now, can be implemented if needed
         };
-        
+
         remoteConnection = new RemoteVncConnection(
             activityContext,
             connection,
             canvas,
             hideKeyboardAndExtraKeys
         );
-        
+
         // Replace ProgressDialog with custom dialog that has a close button
         if (remoteConnection.pd != null) {
             Log.d(TAG, "Replacing ProgressDialog with custom dialog with close button");
             replaceProgressDialogWithCustom(activityContext);
         }
-        
+
         // Create handler
         Runnable setModes = () -> {
             // Set connection modes if needed
         };
-        
+
         handler = new RemoteCanvasHandler(
             activityContext,
             canvas,
@@ -179,13 +183,22 @@ public class VNCConnectionManager {
             connection,
             setModes
         );
-        
+
         Log.d(TAG, "VNC connection manager initialized");
-        
+
         // Note: Connection is not started here. It will be started when connect() is called.
         // The ProgressDialog shown by RemoteConnection constructor will remain visible
         // until the connection actually starts or fails.
     }
+
+    /**
+     * Set the fragment to notify about connection status changes
+     */
+    public void setStatusCallback(OstabFragment fragment) {
+        this.statusCallbackFragment = fragment;
+    }
+
+    private OstabFragment statusCallbackFragment;
     
     /**
      * Start continuous retry mechanism for VNC connection.
@@ -489,6 +502,64 @@ public class VNCConnectionManager {
         // Note: isConnected will be set to true when connection actually succeeds
         // We set it here optimistically, but the connection might fail
         // The actual connection state should be tracked by RemoteConnection
+
+        // Set up connection success/failure monitoring
+        setupConnectionMonitoring();
+    }
+
+    /**
+     * Set up monitoring for connection success/failure
+     */
+    private void setupConnectionMonitoring() {
+        if (remoteConnection == null || handler == null) {
+            return;
+        }
+
+        // Monitor connection state changes
+        // We'll use a simple approach: check if canvas becomes visible
+        uiHandler.postDelayed(() -> {
+            checkConnectionStatus();
+        }, 2000); // Check after 2 seconds
+
+        // Also check periodically during connection attempts
+        for (int i = 0; i < 10; i++) {
+            final int attempt = i;
+            uiHandler.postDelayed(() -> {
+                if (!isConnected && statusCallbackFragment != null) {
+                    // Still trying to connect, update status
+                    Log.d(TAG, "Connection attempt " + (attempt + 1) + " in progress...");
+                }
+            }, 3000L * (i + 1));
+        }
+    }
+
+    /**
+     * Check if connection was successful by looking for canvas updates
+     */
+    private void checkConnectionStatus() {
+        uiHandler.post(() -> {
+            try {
+                if (canvas != null && canvas.getVisibility() == View.VISIBLE) {
+                    // Canvas is visible, connection likely successful
+                    isConnected = true;
+                    if (statusCallbackFragment != null) {
+                        statusCallbackFragment.onVncConnected();
+                    }
+                    Log.d(TAG, "Connection successful - canvas is visible");
+                } else if (statusCallbackFragment != null) {
+                    // Check if any dialogs are still showing
+                    boolean hasDialog = (customProgressDialog != null && customProgressDialog.isShowing()) ||
+                                      (remoteConnection != null && remoteConnection.pd != null && remoteConnection.pd.isShowing());
+
+                    if (!hasDialog && !isConnected) {
+                        // No dialogs showing and not connected - likely failed
+                        statusCallbackFragment.onVncConnectionFailed("Unable to connect to VNC server. Make sure the desktop environment is running.");
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error checking connection status", e);
+            }
+        });
     }
     
     /**

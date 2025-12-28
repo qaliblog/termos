@@ -4,10 +4,15 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.app.Activity;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -29,6 +34,12 @@ public class OstabFragment extends Fragment {
     private Activity activity;
     private RemoteCanvas vncCanvas;
     private VNCConnectionManager vncManager;
+    private LinearLayout statusOverlay;
+    private TextView statusTitle;
+    private TextView statusMessage;
+    private TextView helpText;
+    private ProgressBar loadingProgress;
+    private Handler uiHandler;
 
 
     @Override
@@ -46,8 +57,20 @@ public class OstabFragment extends Fragment {
 
         View root = inflater.inflate(R.layout.fragment_os_tab, container, false);
 
+        // Initialize UI elements
         vncCanvas = root.findViewById(R.id.vnc_canvas);
+        statusOverlay = root.findViewById(R.id.vnc_status_overlay);
+        statusTitle = root.findViewById(R.id.vnc_status_title);
+        statusMessage = root.findViewById(R.id.vnc_status_message);
+        helpText = root.findViewById(R.id.vnc_help_text);
+        loadingProgress = root.findViewById(R.id.vnc_loading);
+
         vncManager = VNCConnectionManager.getInstance(activity);
+        vncManager.setStatusCallback(this);
+        uiHandler = new Handler(Looper.getMainLooper());
+
+        // Start with status overlay visible
+        showStatusOverlay("OS Desktop", "Initializing VNC connection...", "");
 
         return root;
     }
@@ -60,6 +83,8 @@ public class OstabFragment extends Fragment {
         // Initialize and connect VNC when fragment becomes visible
         if (vncManager != null && vncCanvas != null && activity != null) {
             try {
+                showStatusOverlay("OS Desktop", "Initializing VNC connection...", "");
+
                 vncManager.initialize(vncCanvas, activity);
 
                 // Set service client for command execution
@@ -68,11 +93,15 @@ public class OstabFragment extends Fragment {
                     vncManager.setServiceClient(termuxActivity.getTermuxService().getTermuxTerminalSessionClient());
                 }
 
-                // Start connection
-                vncManager.connect();
+                // Start connection with status updates
+                connectWithStatusUpdates();
+
             } catch (Exception e) {
                 Log.e(TAG, "Failed to initialize VNC connection", e);
+                showErrorStatus("Connection Failed", "Failed to initialize VNC: " + e.getMessage());
             }
+        } else {
+            showErrorStatus("Setup Error", "VNC components not available");
         }
     }
 
@@ -94,5 +123,108 @@ public class OstabFragment extends Fragment {
         if (vncManager != null) {
             vncManager.disconnect();
         }
+
+        // Clean up handler
+        if (uiHandler != null) {
+            uiHandler.removeCallbacksAndMessages(null);
+        }
+    }
+
+    /**
+     * Connect to VNC with status updates
+     */
+    private void connectWithStatusUpdates() {
+        try {
+            showStatusOverlay("OS Desktop", "Starting VNC server...", "");
+
+            // Start connection after a brief delay to show status
+            uiHandler.postDelayed(() -> {
+                if (vncManager != null) {
+                    showStatusOverlay("OS Desktop", "Connecting to VNC server...", "");
+                    vncManager.connect();
+                }
+            }, 500);
+
+            // Set up a timeout to show error if connection takes too long
+            uiHandler.postDelayed(() -> {
+                if (statusOverlay != null && statusOverlay.getVisibility() == View.VISIBLE) {
+                    showErrorStatus("Connection Timeout",
+                        "VNC connection is taking longer than expected.\n\n" +
+                        "This usually means:\n" +
+                        "• VNC server is not running\n" +
+                        "• Desktop environment is not installed\n" +
+                        "• Network connection issues\n\n" +
+                        "Try running the desktop diagnostic in a terminal.");
+                }
+            }, 30000); // 30 second timeout
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error in connectWithStatusUpdates", e);
+            showErrorStatus("Connection Error", e.getMessage());
+        }
+    }
+
+    /**
+     * Show status overlay with given message
+     */
+    private void showStatusOverlay(String title, String message, String helpText) {
+        if (statusOverlay == null || statusTitle == null || statusMessage == null) {
+            return;
+        }
+
+        uiHandler.post(() -> {
+            statusTitle.setText(title);
+            statusMessage.setText(message);
+            if (helpText != null && !helpText.isEmpty()) {
+                this.helpText.setText(helpText);
+                this.helpText.setVisibility(View.VISIBLE);
+            } else {
+                this.helpText.setVisibility(View.GONE);
+            }
+            statusOverlay.setVisibility(View.VISIBLE);
+            vncCanvas.setVisibility(View.GONE);
+        });
+    }
+
+    /**
+     * Show error status
+     */
+    private void showErrorStatus(String title, String message) {
+        showStatusOverlay(title, message,
+            "Try:\n• Install OS from Settings\n• Check terminal for VNC server status\n• Restart the app");
+    }
+
+    /**
+     * Hide status overlay and show VNC canvas
+     */
+    public void showVncCanvas() {
+        uiHandler.post(() -> {
+            if (statusOverlay != null) {
+                statusOverlay.setVisibility(View.GONE);
+            }
+            if (vncCanvas != null) {
+                vncCanvas.setVisibility(View.VISIBLE);
+            }
+        });
+    }
+
+    /**
+     * Called by VNC manager when connection succeeds
+     */
+    public void onVncConnected() {
+        uiHandler.post(() -> {
+            showVncCanvas();
+            Log.d(TAG, "VNC connection successful - showing canvas");
+        });
+    }
+
+    /**
+     * Called by VNC manager when connection fails
+     */
+    public void onVncConnectionFailed(String error) {
+        uiHandler.post(() -> {
+            showErrorStatus("Connection Failed", error);
+            Log.e(TAG, "VNC connection failed: " + error);
+        });
     }
 }
