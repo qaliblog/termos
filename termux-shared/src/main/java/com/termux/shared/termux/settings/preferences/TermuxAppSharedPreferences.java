@@ -265,7 +265,7 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
 
 
     public String getVNCInputMode() {
-        return SharedPreferenceUtils.getString(mSharedPreferences, KEY_VNC_INPUT_MODE, DEFAULT_VALUE_VNC_INPUT_MODE);
+        return SharedPreferenceUtils.getString(mSharedPreferences, KEY_VNC_INPUT_MODE, DEFAULT_VALUE_VNC_INPUT_MODE, false);
     }
 
     public void setVNCInputMode(String value) {
