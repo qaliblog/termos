@@ -120,10 +120,12 @@ public class OstabFragment extends Fragment {
         connectButton.setOnClickListener(v -> {
             com.google.android.material.textfield.TextInputEditText hostInput = root.findViewById(R.id.vnc_host_input);
             com.google.android.material.textfield.TextInputEditText portInput = root.findViewById(R.id.vnc_port_input);
+            com.google.android.material.textfield.TextInputEditText usernameInput = root.findViewById(R.id.vnc_username_input);
             com.google.android.material.textfield.TextInputEditText passwordInput = root.findViewById(R.id.vnc_password_input);
 
             String host = hostInput.getText().toString().trim();
             String portStr = portInput.getText().toString().trim();
+            String username = usernameInput.getText().toString().trim();
             String password = passwordInput.getText().toString();
 
             if (host.isEmpty()) {
@@ -148,14 +150,8 @@ public class OstabFragment extends Fragment {
                 return;
             }
 
-            // Password is optional - some VNC servers don't require authentication
-            // if (password.isEmpty()) {
-            //     passwordInput.setError("Password is required");
-            //     return;
-            // }
-
             // Start connection
-            connectToVNC(host, port, password);
+            connectToVNC(host, port, username, password);
         });
 
         cancelButton.setOnClickListener(v -> {
@@ -170,17 +166,18 @@ public class OstabFragment extends Fragment {
     /**
      * Connect to VNC server with the specified parameters
      */
-    private void connectToVNC(String host, int port, String password) {
+    private void connectToVNC(String host, int port, String username, String password) {
         showStatusOverlay("Connecting",
             "Connecting to VNC server...\n" +
             "Host: " + host + "\n" +
             "Port: " + port + "\n" +
+            "Username: " + (username.isEmpty() ? "(none)" : username) + "\n" +
             "Trying different authentication methods automatically", "");
 
-        Log.d(TAG, "Attempting VNC connection to " + host + ":" + port);
+        Log.d(TAG, "Attempting VNC connection to " + host + ":" + port + " as user: " + (username.isEmpty() ? "(none)" : username));
 
         try {
-            vncManager.connect(host, port, password);
+            vncManager.connect(host, port, username, password);
         } catch (Exception e) {
             Log.e(TAG, "Failed to start VNC connection", e);
             showErrorStatus("Connection Failed", "Failed to start connection: " + e.getMessage());

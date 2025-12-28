@@ -60,6 +60,25 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
+                android:hint="Username (optional)"
+                app:hintTextColor="@android:color/white"
+                app:boxStrokeColor="@android:color/white">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/vnc_username_input"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text=""
+                    android:textColor="@android:color/white"
+                    android:inputType="text"
+                    android:maxLines="1" />
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
                 android:hint="Port"
                 app:hintTextColor="@android:color/white"
                 app:boxStrokeColor="@android:color/white">
@@ -108,7 +127,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Local VNC server will be started automatically if not running.\n\nUse Settings → Install OS to set up the desktop environment.\n\nTermos automatically tries different VNC authentication methods:\n• Plain (no encryption)\n• Anonymous TLS\n• VeNCrypt (encrypted)\n\nIf you can connect with RVNC Viewer:\n• Use exact same host/port/password\n• Try ports: 5900, 5901, 5902\n• Password field can be empty if server allows it"
+                android:text="Local VNC server will be started automatically if not running.\n\nUse Settings → Install OS to set up the desktop environment.\n\nTermos automatically tries authentication methods:\n• Plain • Anonymous TLS • VeNCrypt • UltraVNC • SSL Tunnel\n\nUsername field is optional - leave empty if not required.\n\nIf RVNC Viewer works but Termos doesn't:\n• Server may use proprietary authentication\n• Try RealVNC Viewer or official VNC clients\n• Check server security settings\n• Some servers require specific VNC client software"
                 android:textColor="@android:color/darker_gray"
                 android:textSize="12sp"
                 android:gravity="center"

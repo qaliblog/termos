@@ -93,7 +93,9 @@ public class VNCConnectionManager {
     private int[] connectionTypesToTry = {
         com.iiordanov.bVNC.Constants.CONN_TYPE_PLAIN,
         com.iiordanov.bVNC.Constants.CONN_TYPE_ANONTLS,
-        com.iiordanov.bVNC.Constants.CONN_TYPE_VENCRYPT
+        com.iiordanov.bVNC.Constants.CONN_TYPE_VENCRYPT,
+        com.iiordanov.bVNC.Constants.CONN_TYPE_ULTRAVNC,
+        com.iiordanov.bVNC.Constants.CONN_TYPE_STUNNEL
     };
     private int currentConnectionTypeIndex = 0;
     private Handler timeoutHandler;
@@ -367,11 +369,20 @@ public class VNCConnectionManager {
         } else {
             // All connection types tried, give up
             Log.e(TAG, "All connection types tried, giving up");
+            String triedMethods = "Tried authentication methods:\n";
+            for (int type : connectionTypesToTry) {
+                triedMethods += "• " + getConnectionTypeName(type) + "\n";
+            }
+
             if (statusCallbackFragment != null) {
                 statusCallbackFragment.onVncConnectionFailed(
                     "Unable to connect with any supported authentication method.\n\n" +
-                    "Server may use unsupported VNC authentication.\n" +
-                    "Try a different VNC server or check server configuration."
+                    triedMethods + "\n" +
+                    "Possible issues:\n" +
+                    "• Server uses unsupported VNC authentication (try RealVNC Viewer)\n" +
+                    "• Server requires specific security settings\n" +
+                    "• Network firewall blocking connection\n" +
+                    "• Try a different VNC server software"
                 );
             }
         }
@@ -407,9 +418,10 @@ public class VNCConnectionManager {
      * Auto-starts VNC server if connecting to localhost and not running.
      * @param host VNC server host
      * @param port VNC server port
-     * @param password VNC password
+     * @param username VNC username (optional)
+     * @param password VNC password (optional)
      */
-    public void connect(String host, int port, String password) {
+    public void connect(String host, int port, String username, String password) {
         if (canvas == null || connection == null || remoteConnection == null) {
             Log.e(TAG, "Cannot connect: not initialized");
             return;
@@ -429,6 +441,9 @@ public class VNCConnectionManager {
         // Update connection parameters
         connection.setAddress(host);
         connection.setPort(port);
+        if (username != null && !username.isEmpty()) {
+            connection.setUserName(username);
+        }
         connection.setPassword(password);
         connection.setKeepPassword(true);
 
@@ -436,7 +451,10 @@ public class VNCConnectionManager {
         currentConnectionTypeIndex = 0;
         connection.setConnectionType(connectionTypesToTry[0]); // Start with plain connection
 
-        Log.d(TAG, "Connecting to VNC server at " + host + ":" + port + " (user provided credentials)");
+        Log.d(TAG, "Connecting to VNC server at " + host + ":" + port +
+                   " username: '" + (username != null ? username : "(null)") +
+                   "' password: '" + (password != null && !password.isEmpty() ? "***" : "(empty)") +
+                   "' (user provided credentials)");
 
         // Since user manually provided connection details, assume they know the server is running
         // Don't try to auto-start VNC server - just attempt direct connection
