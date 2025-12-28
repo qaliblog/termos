@@ -4,9 +4,16 @@ export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/share/bin:/usr/share/sbin:/usr/lo
 export HOME=/root
 
 # Set hostname to avoid issues with commands that require it
-if ! hostname >/dev/null 2>&1 || [ -z "$(hostname 2>/dev/null)" ]; then
+if ! hostname >/dev/null 2>&1 || [ -z "$(hostname 2>/dev/null)" ] || [ "$(hostname)" = "(none)" ]; then
     hostname localhost 2>/dev/null || true
     export HOSTNAME=localhost
+fi
+
+# Ensure /etc/hosts has localhost entry
+if [ -w /etc ]; then
+    if [ ! -f /etc/hosts ] || ! grep -q "127.0.0.1.*localhost" /etc/hosts 2>/dev/null; then
+        echo "127.0.0.1 localhost" >> /etc/hosts 2>/dev/null || true
+    fi
 fi
 
 if [ ! -s /etc/resolv.conf ]; then

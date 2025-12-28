@@ -199,7 +199,35 @@ public class VNCConnectionManager {
     }
 
     private OstabFragment statusCallbackFragment;
-    
+
+    /**
+     * Check for common VNC startup issues and report them
+     */
+    private void checkVNCStartupIssues() {
+        if (serviceClient == null) return;
+
+        // Check VNC log for common errors
+        commandExecutor.executeCommand(
+            "if [ -f ~/.vnc/vncserver.log ]; then " +
+            "  tail -20 ~/.vnc/vncserver.log | grep -iE '(error|failed|cannot|unable)' | head -3; " +
+            "fi",
+            serviceClient,
+            new LinuxCommandExecutor.CommandCallback() {
+                @Override
+                public void onSuccess(String output) {
+                    if (output != null && !output.trim().isEmpty()) {
+                        Log.w(TAG, "VNC startup issues detected: " + output.trim());
+                        // Don't stop retries for minor issues, but log them
+                    }
+                }
+
+                @Override
+                public void onError(String error) {
+                    // Log file might not exist yet, which is normal
+                }
+            });
+    }
+
     /**
      * Start continuous retry mechanism for VNC connection.
      * Attempts to connect every 5 seconds until successful.
@@ -225,6 +253,16 @@ public class VNCConnectionManager {
                     attemptConnection();
                 } else {
                     Log.w(TAG, "Max retries reached, stopping continuous retry");
+                    // Provide user feedback about the failure
+                    if (statusCallbackFragment != null) {
+                        statusCallbackFragment.runOnUiThread(() -> {
+                            statusCallbackFragment.showErrorStatus(
+                                "Connection Failed",
+                                "Unable to connect to VNC server after " + MAX_CONNECTION_RETRIES + " attempts. " +
+                                "Check that the OS is properly installed and try restarting the app."
+                            );
+                        });
+                    }
                     // Reset counter for next manual retry
                     connectionRetryCount = 0;
                     return;
@@ -365,6 +403,10 @@ public class VNCConnectionManager {
                 @Override
                 public void onSuccess(String output) {
                     Log.d(TAG, "VNC server ready: " + output);
+
+                    // Check for common startup issues by examining the log file
+                    checkVNCStartupIssues();
+
                     // Wait a bit for server to fully start
                     new Handler(Looper.getMainLooper()).postDelayed(() -> {
                         verifyAndConnect();

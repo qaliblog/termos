@@ -61,12 +61,37 @@ fi
 if [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then
     # Set TMPDIR to an absolute path to help with shm-helper path resolution
     export TMPDIR=/tmp
-    # Use --sh-syntax and filter out shm-helper errors (they're harmless)
-    DBUS_OUTPUT=$(dbus-launch --sh-syntax 2>/dev/null || dbus-launch --sh-syntax 2>&1 | grep -v 'shm-helper' || true)
-    if [ -n "$DBUS_OUTPUT" ]; then
-        eval "$DBUS_OUTPUT"
+    export XDG_RUNTIME_DIR=/tmp
+
+    # Ensure hostname is set properly to avoid VNC hostname issues
+    if [ -z "$(hostname 2>/dev/null)" ] || [ "$(hostname)" = "(none)" ]; then
+        hostname localhost 2>/dev/null || true
     fi
-    export DBUS_SESSION_BUS_ADDRESS
+
+    # Create /etc/hosts entry if missing
+    if [ ! -f /etc/hosts ] || ! grep -q "127.0.0.1.*localhost" /etc/hosts 2>/dev/null; then
+        echo "127.0.0.1 localhost" >> /etc/hosts 2>/dev/null || true
+    fi
+
+    # Try multiple approaches to start D-Bus, suppressing shm-helper errors
+    if command -v dbus-launch >/dev/null 2>&1; then
+        # Use --sh-syntax and properly suppress all shm-helper related errors
+        DBUS_OUTPUT=$(dbus-launch --sh-syntax --exit-with-session 2>&1 | grep -vE '(shm-helper|expected absolute path|--shm-helper)' | grep -E '(DBUS_SESSION_BUS_ADDRESS|DBUS_SESSION_BUS_PID)' || true)
+        if [ -n "$DBUS_OUTPUT" ]; then
+            eval "$DBUS_OUTPUT" 2>/dev/null || true
+        fi
+    fi
+
+    # Fallback: try alternative dbus setup if the above failed
+    if [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then
+        export DBUS_SESSION_BUS_ADDRESS="unix:path=/tmp/dbus-session"
+        mkdir -p /tmp
+        # Only start dbus-daemon if it's not already running
+        if ! pgrep -f "dbus-daemon.*session" >/dev/null 2>&1; then
+            dbus-daemon --session --address="$DBUS_SESSION_BUS_ADDRESS" --nofork --nopidfile >/dev/null 2>&1 &
+            sleep 1
+        fi
+    fi
 fi
 
 # Set environment for touch-based interaction
@@ -120,14 +145,14 @@ echo "resolution:$VNC_RESOLUTION" >> "$VNC_DISPLAY_FILE"
 echo "started:$(date +%s)" >> "$VNC_DISPLAY_FILE"
 echo "VNC port information written to $VNC_DISPLAY_FILE"
 
-# Start VNC server in background
+# Start VNC server in background with proper error handling
 vncserver "$VNC_DISPLAY" \
     -geometry "$VNC_RESOLUTION" \
     -depth "$VNC_DEPTH" \
     -localhost no \
     -SecurityTypes None \
     -xstartup "$VNC_XSTARTUP" \
-    > "$VNC_LOG_DIR/vncserver.log" 2>&1 &
+    2>&1 | grep -vE '(shm-helper|expected absolute path|--shm-helper)' > "$VNC_LOG_DIR/vncserver.log" 2>&1 &
 
 VNC_PID=$!
 
