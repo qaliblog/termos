@@ -1,14 +1,11 @@
 package com.termos.app.activities;
 
 import android.app.AlertDialog;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.IBinder;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -19,9 +16,10 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.termos.R;
-import com.termos.app.TermuxService;
 import com.termos.app.linuxruntime.LinuxCommandExecutor;
 import com.termos.app.linuxruntime.RootfsManager;
+import com.termux.terminal.TerminalSession;
+import com.termux.terminal.TerminalSessionClient;
 import com.termux.shared.shell.command.ExecutionCommand;
 import com.termux.shared.shell.command.runner.app.AppShell;
 import com.termux.shared.shell.command.environment.IShellEnvironment;
@@ -33,7 +31,7 @@ import java.io.File;
  * Activity to install desktop environment and VNC server for OS tab.
  * Installs Lomiri desktop environment (Ubuntu Touch's desktop) and sets up VNC server.
  */
-public class InstallOSActivity extends AppCompatActivity implements ServiceConnection {
+public class InstallOSActivity extends AppCompatActivity {
     private static final String TAG = "InstallOSActivity";
     private static final String PREFS_NAME = "termos_os_install";
     private static final String KEY_OS_INSTALLED = "os_installed";
@@ -44,7 +42,94 @@ public class InstallOSActivity extends AppCompatActivity implements ServiceConne
     private TextView statusText;
     private Button installButton;
     private Button uninstallButton;
-    private TermuxService termuxService;
+
+    // Simple TerminalSessionClient implementation for command execution
+    private final TerminalSessionClient terminalSessionClient = new TerminalSessionClient() {
+        @Override
+        public void onTextChanged(TerminalSession changedSession) {
+            // No-op for command execution
+        }
+
+        @Override
+        public void onTitleChanged(TerminalSession changedSession) {
+            // No-op for command execution
+        }
+
+        @Override
+        public void onSessionFinished(TerminalSession finishedSession) {
+            // No-op for command execution
+        }
+
+        @Override
+        public void onCopyTextToClipboard(TerminalSession session, String text) {
+            // No-op for command execution
+        }
+
+        @Override
+        public void onPasteTextFromClipboard(TerminalSession session) {
+            // No-op for command execution
+        }
+
+        @Override
+        public void onBell(TerminalSession session) {
+            // No-op for command execution
+        }
+
+        @Override
+        public void onColorsChanged(TerminalSession session) {
+            // No-op for command execution
+        }
+
+        @Override
+        public void onTerminalCursorStateChange(boolean state) {
+            // No-op for command execution
+        }
+
+        @Override
+        public void setTerminalShellPid(TerminalSession session, int pid) {
+            // No-op for command execution
+        }
+
+        @Override
+        public Integer getTerminalCursorStyle() {
+            return null; // Default cursor style
+        }
+
+        @Override
+        public void logError(String tag, String message) {
+            Log.e(tag, message);
+        }
+
+        @Override
+        public void logWarn(String tag, String message) {
+            Log.w(tag, message);
+        }
+
+        @Override
+        public void logInfo(String tag, String message) {
+            Log.i(tag, message);
+        }
+
+        @Override
+        public void logDebug(String tag, String message) {
+            Log.d(tag, message);
+        }
+
+        @Override
+        public void logVerbose(String tag, String message) {
+            Log.v(tag, message);
+        }
+
+        @Override
+        public void logStackTraceWithMessage(String tag, String message, Exception e) {
+            Log.e(tag, message, e);
+        }
+
+        @Override
+        public void logStackTrace(String tag, Exception e) {
+            Log.e(tag, "Stack trace", e);
+        }
+    };
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,9 +141,6 @@ public class InstallOSActivity extends AppCompatActivity implements ServiceConne
 
         initializeViews();
         checkInstallationStatus();
-
-        // Bind to TermuxService to access terminal functionality
-        bindToTermuxService();
     }
     
     private void initializeViews() {
@@ -86,34 +168,6 @@ public class InstallOSActivity extends AppCompatActivity implements ServiceConne
         }
     }
 
-    private void bindToTermuxService() {
-        try {
-            // Start the TermuxService and bind to it
-            Intent serviceIntent = new Intent(this, TermuxService.class);
-            startService(serviceIntent);
-
-            // Attempt to bind to the service
-            if (!bindService(serviceIntent, this, 0)) {
-                Log.e(TAG, "Failed to bind to TermuxService");
-                Toast.makeText(this, "Cannot connect to terminal service", Toast.LENGTH_SHORT).show();
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error binding to TermuxService", e);
-            Toast.makeText(this, "Cannot connect to terminal service: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    @Override
-    public void onServiceConnected(ComponentName componentName, IBinder service) {
-        Log.d(TAG, "Connected to TermuxService");
-        termuxService = ((TermuxService.LocalBinder) service).service;
-    }
-
-    @Override
-    public void onServiceDisconnected(ComponentName componentName) {
-        Log.d(TAG, "Disconnected from TermuxService");
-        termuxService = null;
-    }
     
     private void startInstallation() {
         // Check if rootfs is installed
@@ -1132,27 +1186,13 @@ public class InstallOSActivity extends AppCompatActivity implements ServiceConne
         progressBar.setVisibility(View.VISIBLE);
         statusText.setText("Uninstalling OS components...");
 
-        // Get terminal session client for command execution
-        if (termuxService == null) {
-            statusText.setText("Cannot uninstall: Terminal service not available");
-            progressBar.setVisibility(View.GONE);
-            uninstallButton.setEnabled(true);
-            return;
-        }
-
-        com.termux.terminal.TerminalSessionClient sessionClient = termuxService.getTermuxTerminalSessionClient();
-        if (sessionClient == null) {
-            statusText.setText("Cannot uninstall: Terminal session not available");
-            progressBar.setVisibility(View.GONE);
-            uninstallButton.setEnabled(true);
-            return;
-        }
+        // Use the simple terminal session client for command execution
 
         // Create uninstallation script
         String uninstallScript = createUninstallScript();
 
         // Execute uninstallation
-        commandExecutor.executeCommand(uninstallScript, sessionClient, new LinuxCommandExecutor.CommandCallback() {
+        commandExecutor.executeCommand(uninstallScript, terminalSessionClient, new LinuxCommandExecutor.CommandCallback() {
             @Override
             public void onSuccess(String output) {
                 runOnUiThread(() -> {
@@ -1370,17 +1410,6 @@ public class InstallOSActivity extends AppCompatActivity implements ServiceConne
                 statusText.setText("Update failed: " + (errorMessage != null ? errorMessage : "Unknown error"));
                 Toast.makeText(InstallOSActivity.this, "Update failed", Toast.LENGTH_SHORT).show();
             }
-        }
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-
-        // Unbind from TermuxService
-        if (termuxService != null) {
-            unbindService(this);
-            termuxService = null;
         }
     }
 }
