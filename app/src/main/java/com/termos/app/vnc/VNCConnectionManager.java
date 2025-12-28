@@ -87,9 +87,15 @@ public class VNCConnectionManager {
     private boolean isConnected = false;
     private boolean isPaused = false;
     private int connectionRetryCount = 0;
-    private static final int MAX_CONNECTION_RETRIES = 10; // Maximum retries before giving up
-    private static final int CONNECTION_TIMEOUT_MS = 25000; // 25 seconds timeout (socket timeout is 20s, add 5s buffer)
-    private static final int CONNECTION_RETRY_INTERVAL_MS = 5000; // 5 seconds between connection retries
+    private static final int MAX_CONNECTION_RETRIES = 3; // Maximum retries per connection type
+    private static final int CONNECTION_TIMEOUT_MS = 15000; // 15 seconds timeout for faster retries
+    private static final int CONNECTION_RETRY_INTERVAL_MS = 2000; // 2 seconds between connection retries
+    private int[] connectionTypesToTry = {
+        com.iiordanov.bVNC.Constants.CONN_TYPE_PLAIN,
+        com.iiordanov.bVNC.Constants.CONN_TYPE_ANONTLS,
+        com.iiordanov.bVNC.Constants.CONN_TYPE_VENCRYPT
+    };
+    private int currentConnectionTypeIndex = 0;
     private Handler timeoutHandler;
     private Handler retryHandler;
     private Handler uiHandler;
@@ -328,14 +334,62 @@ public class VNCConnectionManager {
         timeoutHandler.postDelayed(new Runnable() {
             @Override
             public void run() {
-                Log.w(TAG, "Connection attempt " + connectionRetryCount + " timed out");
+                Log.w(TAG, "Connection attempt " + connectionRetryCount + " timed out for " + getConnectionTypeName(connection.getConnectionType()));
                 dismissProgressDialog();
+
+                // Try next connection type if available
+                tryNextConnectionType();
             }
         }, CONNECTION_TIMEOUT_MS);
 
         // For manual connections, skip VNC server auto-start and connect directly
-        Log.d(TAG, "Connecting to VNC server at " + connection.getAddress() + ":" + connection.getPort() + " (attempt " + connectionRetryCount + ")");
+        Log.d(TAG, "Connecting to VNC server at " + connection.getAddress() + ":" + connection.getPort() +
+                   " using " + getConnectionTypeName(connection.getConnectionType()) + " (attempt " + connectionRetryCount + ")");
         doDirectConnect();
+    }
+
+    /**
+     * Try the next connection type if current one fails
+     */
+    private void tryNextConnectionType() {
+        currentConnectionTypeIndex++;
+
+        if (currentConnectionTypeIndex < connectionTypesToTry.length) {
+            int nextConnectionType = connectionTypesToTry[currentConnectionTypeIndex];
+            Log.d(TAG, "Trying next connection type: " + getConnectionTypeName(nextConnectionType));
+            connection.setConnectionType(nextConnectionType);
+            connectionRetryCount = 0; // Reset retry count for new connection type
+
+            // Try connecting with the new connection type
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                attemptConnection();
+            }, 1000); // Wait 1 second before trying next type
+        } else {
+            // All connection types tried, give up
+            Log.e(TAG, "All connection types tried, giving up");
+            if (statusCallbackFragment != null) {
+                statusCallbackFragment.onVncConnectionFailed(
+                    "Unable to connect with any supported authentication method.\n\n" +
+                    "Server may use unsupported VNC authentication.\n" +
+                    "Try a different VNC server or check server configuration."
+                );
+            }
+        }
+    }
+
+    /**
+     * Get human-readable name for connection type
+     */
+    private String getConnectionTypeName(int connType) {
+        switch (connType) {
+            case com.iiordanov.bVNC.Constants.CONN_TYPE_PLAIN: return "Plain";
+            case com.iiordanov.bVNC.Constants.CONN_TYPE_ANONTLS: return "Anonymous TLS";
+            case com.iiordanov.bVNC.Constants.CONN_TYPE_VENCRYPT: return "VeNCrypt";
+            case com.iiordanov.bVNC.Constants.CONN_TYPE_SSH: return "SSH";
+            case com.iiordanov.bVNC.Constants.CONN_TYPE_ULTRAVNC: return "UltraVNC";
+            case com.iiordanov.bVNC.Constants.CONN_TYPE_STUNNEL: return "SSL Tunnel";
+            default: return "Unknown (" + connType + ")";
+        }
     }
 
     /**
@@ -377,6 +431,10 @@ public class VNCConnectionManager {
         connection.setPort(port);
         connection.setPassword(password);
         connection.setKeepPassword(true);
+
+        // Reset connection type index for fresh start
+        currentConnectionTypeIndex = 0;
+        connection.setConnectionType(connectionTypesToTry[0]); // Start with plain connection
 
         Log.d(TAG, "Connecting to VNC server at " + host + ":" + port + " (user provided credentials)");
 
@@ -598,22 +656,29 @@ public class VNCConnectionManager {
         // Check if connection is ready
         if (!connection.isReadyForConnection()) {
             Log.e(TAG, "Connection not ready: missing required parameters");
+            if (statusCallbackFragment != null) {
+                statusCallbackFragment.onVncConnectionFailed("Connection not ready: missing required parameters (host, port, password)");
+            }
             return;
         }
-        
+
         // Check if handler is available
         if (handler == null) {
             Log.e(TAG, "Handler not available, cannot connect");
+            if (statusCallbackFragment != null) {
+                statusCallbackFragment.onVncConnectionFailed("VNC handler not initialized");
+            }
             return;
         }
-        
-        Log.d(TAG, "Starting VNC connection...");
-        
+
+        Log.d(TAG, "Starting VNC connection to " + connection.getAddress() + ":" + connection.getPort() +
+                   " with auth type: " + connection.getConnectionType());
+
         // Timeout handler is already set up in connect() method
         // Start connection by sending REINIT_SESSION message
         // This will call initializeConnection() which starts the connection thread
         handler.sendEmptyMessage(RemoteClientLibConstants.REINIT_SESSION);
-        
+
         // Note: isConnected will be set to true when connection actually succeeds
         // We set it here optimistically, but the connection might fail
         // The actual connection state should be tracked by RemoteConnection

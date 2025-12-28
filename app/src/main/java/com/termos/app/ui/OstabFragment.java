@@ -148,10 +148,11 @@ public class OstabFragment extends Fragment {
                 return;
             }
 
-            if (password.isEmpty()) {
-                passwordInput.setError("Password is required");
-                return;
-            }
+            // Password is optional - some VNC servers don't require authentication
+            // if (password.isEmpty()) {
+            //     passwordInput.setError("Password is required");
+            //     return;
+            // }
 
             // Start connection
             connectToVNC(host, port, password);
@@ -174,7 +175,7 @@ public class OstabFragment extends Fragment {
             "Connecting to VNC server...\n" +
             "Host: " + host + "\n" +
             "Port: " + port + "\n" +
-            "Using password authentication", "");
+            "Trying different authentication methods automatically", "");
 
         Log.d(TAG, "Attempting VNC connection to " + host + ":" + port);
 
