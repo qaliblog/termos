@@ -294,12 +294,12 @@ public class OstabFragment extends Fragment {
     public void onVncConnectionFailed(String error) {
         uiHandler.post(() -> {
             showErrorStatus("Connection Failed",
-                error + "\n\nPossible solutions:\n" +
-                "• Verify host, port, and password match your VNC server\n" +
-                "• Try different VNC ports (5900-5909)\n" +
-                "• Check if password is required or try empty password\n" +
-                "• Ensure VNC server supports VNC authentication\n" +
-                "• Try connecting with different credentials\n\n" +
+                "Unable to connect to VNC server.\n\n" +
+                "If using a proprietary VNC server, try switching to:\n" +
+                "• TightVNC - Most compatible with Termos\n" +
+                "• TigerVNC - Modern and reliable\n" +
+                "• RealVNC Server (free) - Official implementation\n\n" +
+                "Standard servers work perfectly with Termos!\n\n" +
                 "Tap Cancel to return to connection form.");
             Log.e(TAG, "VNC connection failed: " + error);
         });

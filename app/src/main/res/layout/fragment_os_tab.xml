@@ -127,7 +127,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Local VNC server will be started automatically if not running.\n\nUse Settings → Install OS to set up the desktop environment.\n\nTermos automatically tries authentication methods:\n• Plain • Anonymous TLS • VeNCrypt • UltraVNC • SSL Tunnel\n\nUsername field is optional - leave empty if not required.\n\nIf RVNC Viewer works but Termos doesn't:\n• Server may use proprietary authentication\n• Try RealVNC Viewer or official VNC clients\n• Check server security settings\n• Some servers require specific VNC client software"
+                android:text="Local VNC server will be started automatically if not running.\n\nUse Settings → Install OS to set up the desktop environment.\n\nTermos automatically tries authentication methods:\n• Plain • Anonymous TLS • VeNCrypt • UltraVNC • SSL Tunnel\n\nUsername field is optional - leave empty if not required.\n\nIf RVNC Viewer works but Termos doesn't:\n• Switch to TightVNC - most compatible with Termos\n• Try TigerVNC or RealVNC Server (free version)\n• Avoid proprietary/custom VNC server software"
                 android:textColor="@android:color/darker_gray"
                 android:textSize="12sp"
                 android:gravity="center"
