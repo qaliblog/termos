@@ -175,6 +175,15 @@ public class LinuxCommandExecutor {
     }
     
     /**
+     * Get information about running VNC servers.
+     */
+    public void getVNCServerStatus(com.termux.terminal.TerminalSessionClient serviceClient,
+                                   CommandCallback callback) {
+        executeCommand("if [ -f /usr/local/bin/vnc-status.sh ]; then /usr/local/bin/vnc-status.sh; else echo 'VNC status script not found. Run setup first.'; fi",
+                      serviceClient, callback);
+    }
+
+    /**
      * Start VNC server if not already running.
      */
     public void startVNCServerIfNeeded(com.termux.terminal.TerminalSessionClient serviceClient,

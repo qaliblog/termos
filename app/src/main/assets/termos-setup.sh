@@ -217,6 +217,111 @@ fi
 touch "$SETUP_MARKER"
 log "Setup completed successfully!"
 
+# Create helper script for VNC server management
+cat > /usr/local/bin/vnc-status.sh << 'EOF'
+#!/bin/sh
+# VNC Status Checker for Termos
+# Shows information about running VNC servers
+
+echo "=== Termos VNC Status ==="
+echo
+
+# Check if in Termos environment
+if [ ! -f "/usr/local/bin/start-vnc.sh" ]; then
+    echo "Warning: Not running in Termos environment"
+    echo
+fi
+
+# Method 1: Check listening ports
+echo "🔍 Checking listening VNC ports (5900-5999):"
+if command -v ss >/dev/null 2>&1; then
+    vnc_ports=$(ss -ln | grep -E ":590[0-9]" | wc -l)
+    if [ "$vnc_ports" -gt 0 ]; then
+        echo "  ✓ Found $vnc_ports listening VNC port(s):"
+        ss -ln | grep -E ":590[0-9]" | while read -r line; do
+            port=$(echo "$line" | awk '{print $4}' | sed 's/.*://')
+            if [ -n "$port" ] && [ "$port" -ge 5900 ] && [ "$port" -le 5999 ]; then
+                display=$((port - 5900))
+                echo "    Display :$display → Port $port"
+            fi
+        done
+    else
+        echo "  ✗ No listening VNC ports found"
+    fi
+elif command -v netstat >/dev/null 2>&1; then
+    vnc_ports=$(netstat -ln | grep -E ":590[0-9]" | wc -l)
+    if [ "$vnc_ports" -gt 0 ]; then
+        echo "  ✓ Found $vnc_ports listening VNC port(s):"
+        netstat -ln | grep -E ":590[0-9]" | while read -r line; do
+            port=$(echo "$line" | awk '{print $4}' | sed 's/.*://')
+            if [ -n "$port" ] && [ "$port" -ge 5900 ] && [ "$port" -le 5999 ]; then
+                display=$((port - 5900))
+                echo "    Display :$display → Port $port"
+            fi
+        done
+    else
+        echo "  ✗ No listening VNC ports found"
+    fi
+else
+    echo "  ⚠ Cannot check ports (ss/netstat not available)"
+fi
+
+echo
+
+# Method 2: Check running processes
+echo "🔍 Checking running VNC processes:"
+vnc_processes=$(ps aux | grep -E "[v]ncserver|[X]vnc|[x]11vnc" | wc -l)
+if [ "$vnc_processes" -gt 0 ]; then
+    echo "  ✓ Found $vnc_processes VNC process(es):"
+    ps aux | grep -E "[v]ncserver|[X]vnc|[x]11vnc" | while read -r line; do
+        pid=$(echo "$line" | awk '{print $2}')
+        cmd=$(echo "$line" | awk '{print $11}' | sed 's|.*/||')
+        echo "    PID $pid: $cmd"
+    done
+else
+    echo "  ✗ No VNC processes running"
+fi
+
+echo
+
+# Method 3: Check vncserver list
+echo "🔍 Checking VNC server list:"
+if command -v vncserver >/dev/null 2>&1; then
+    server_list=$(vncserver -list 2>/dev/null)
+    if echo "$server_list" | grep -q '^:'; then
+        echo "  ✓ VNC servers managed by vncserver:"
+        echo "$server_list" | grep '^:' | while read -r line; do
+            echo "    $line"
+        done
+    else
+        echo "  ✗ No servers listed by vncserver"
+    fi
+else
+    echo "  ✗ vncserver command not available"
+fi
+
+echo
+
+# Method 4: Check Termos VNC info
+echo "🔍 Checking Termos VNC information:"
+if [ -f "/tmp/vnc-display.txt" ]; then
+    echo "  ✓ Termos VNC info found:"
+    cat "/tmp/vnc-display.txt" 2>/dev/null | while read -r line; do
+        echo "    $line"
+    done
+else
+    echo "  ✗ No Termos VNC info file found"
+fi
+
+echo
+echo "💡 Commands:"
+echo "  start-vnc.sh --list    List active servers"
+echo "  start-vnc.sh --stop    Stop all servers"
+echo "  start-vnc.sh           Start new server"
+echo
+EOF
+chmod +x /usr/local/bin/vnc-status.sh
+
 # Create helper script for manual Selenium testing
 cat > /usr/local/bin/test-selenium.sh << 'EOF'
 #!/bin/sh

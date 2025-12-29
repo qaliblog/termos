@@ -3,6 +3,102 @@
 # Starts TightVNC server with automatic port incrementing
 # Default password: termos123
 
+# Function to list active VNC servers
+list_vnc_servers() {
+    echo "Active VNC Servers:"
+    echo "==================="
+
+    # Method 1: Check listening ports
+    echo "Listening ports (5900-5999):"
+    if command -v ss >/dev/null 2>&1; then
+        ss -ln | grep -E ":590[0-9]" | while read -r line; do
+            port=$(echo "$line" | awk '{print $4}' | sed 's/.*://')
+            if [ -n "$port" ] && [ "$port" -ge 5900 ] && [ "$port" -le 5999 ]; then
+                display=$((port - 5900))
+                echo "  Display :$display (Port $port)"
+            fi
+        done
+    elif command -v netstat >/dev/null 2>&1; then
+        netstat -ln | grep -E ":590[0-9]" | while read -r line; do
+            port=$(echo "$line" | awk '{print $4}' | sed 's/.*://')
+            if [ -n "$port" ] && [ "$port" -ge 5900 ] && [ "$port" -le 5999 ]; then
+                display=$((port - 5900))
+                echo "  Display :$display (Port $port)"
+            fi
+        done
+    fi
+
+    # Method 2: Check running VNC processes
+    echo "Running VNC processes:"
+    if pgrep -f "[v]ncserver|[X]vnc|[x]11vnc" >/dev/null 2>&1; then
+        ps aux | grep -E "[v]ncserver|[X]vnc|[x]11vnc" | while read -r line; do
+            pid=$(echo "$line" | awk '{print $2}')
+            cmd=$(echo "$line" | awk '{print $11}')
+            args=$(echo "$line" | cut -d' ' -f12-)
+            echo "  PID $pid: $cmd $args"
+        done
+    else
+        echo "  No VNC processes found"
+    fi
+
+    # Method 3: Check vncserver list (TightVNC/TigerVNC specific)
+    if command -v vncserver >/dev/null 2>&1; then
+        echo "VNC Server list:"
+        vncserver -list 2>/dev/null || echo "  No servers listed (or command failed)"
+    fi
+
+    # Method 4: Check Termos VNC info file
+    if [ -f "/tmp/vnc-display.txt" ]; then
+        echo "Termos VNC info:"
+        cat "/tmp/vnc-display.txt" 2>/dev/null || echo "  Could not read info file"
+    fi
+}
+
+# Function to stop VNC servers
+stop_vnc_servers() {
+    echo "Stopping VNC servers..."
+
+    # Stop all VNC servers listed by vncserver -list
+    if command -v vncserver >/dev/null 2>&1; then
+        vncserver -list 2>/dev/null | grep '^:' | while read -r line; do
+            display=$(echo "$line" | awk '{print $1}')
+            echo "Stopping $display..."
+            vncserver -kill "$display" >/dev/null 2>&1
+        done
+    fi
+
+    # Kill any remaining VNC processes
+    pkill -f "[v]ncserver|[X]vnc|[x]11vnc" >/dev/null 2>&1 && echo "Killed remaining VNC processes"
+
+    # Clean up temp files
+    rm -f /tmp/vnc-display.txt
+
+    echo "VNC servers stopped."
+}
+
+# Check command line parameters
+case "$1" in
+    --list|-l)
+        list_vnc_servers
+        exit 0
+        ;;
+    --stop|-s)
+        stop_vnc_servers
+        exit 0
+        ;;
+    --help|-h)
+        echo "Usage: $0 [OPTIONS]"
+        echo ""
+        echo "Options:"
+        echo "  --list, -l    List active VNC servers"
+        echo "  --stop, -s    Stop all VNC servers"
+        echo "  --help, -h    Show this help"
+        echo ""
+        echo "Without options, starts a new VNC server"
+        exit 0
+        ;;
+esac
+
 VNC_BASE_PORT=5901
 VNC_RESOLUTION="1024x768"
 VNC_DEPTH="24"
