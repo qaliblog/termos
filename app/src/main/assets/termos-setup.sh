@@ -86,9 +86,9 @@ case "$DISTRO" in
         }
         
         # Install VNC + X11 + Desktop
-        log "Installing VNC server and desktop environment..."
+        log "Installing TightVNC server and desktop environment..."
         apt-get install -y \
-            tigervnc-standalone-server \
+            tightvncserver \
             xvfb \
             x11vnc \
             xfce4 \
@@ -141,9 +141,9 @@ case "$DISTRO" in
         }
         
         # Install VNC + X11 + Desktop
-        log "Installing VNC server and desktop environment..."
+        log "Installing TightVNC server and desktop environment..."
         apk add \
-            tigervnc-server \
+            tightvnc \
             xvfb \
             x11vnc \
             xfce4 \

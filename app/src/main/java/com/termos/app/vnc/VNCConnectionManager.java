@@ -150,7 +150,7 @@ public class VNCConnectionManager {
         connection.setConnectionType(Constants.CONN_TYPE_PLAIN);
         connection.setColorModel(com.iiordanov.bVNC.COLORMODEL.C24bit.nameString());
         connection.setPrefEncoding(7); // RfbProto.EncodingTight
-        connection.setPassword("termos"); // Use "termos" as the VNC password
+        connection.setPassword("termos123"); // Use "termos123" as the VNC password
         connection.setKeepPassword(true);
 
         // Set up canvas
@@ -470,7 +470,7 @@ public class VNCConnectionManager {
     @Deprecated
     public void connect() {
         // Default connection to localhost
-        connect(VNC_HOST, DEFAULT_VNC_PORT, "", "termos");
+        connect(VNC_HOST, DEFAULT_VNC_PORT, "", "termos123");
     }
     
     /**

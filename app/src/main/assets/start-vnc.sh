@@ -1,6 +1,7 @@
 #!/bin/sh
 # VNC Server startup script for Termos
-# Starts TigerVNC server with automatic port incrementing
+# Starts TightVNC server with automatic port incrementing
+# Default password: termos123
 
 VNC_BASE_PORT=5901
 VNC_RESOLUTION="1024x768"
@@ -31,17 +32,24 @@ find_available_port() {
 # Create VNC directory
 mkdir -p "$VNC_LOG_DIR"
 
-# Set VNC password if not set (use "termos" as password)
+# Set VNC password if not set (use "termos123" as password)
 if [ ! -f "$VNC_PASSWORD_FILE" ]; then
     mkdir -p "$(dirname "$VNC_PASSWORD_FILE")"
-    # Create password file with "termos" as password
-    echo "termos" | vncpasswd -f > "$VNC_PASSWORD_FILE" 2>/dev/null || {
-        # If vncpasswd not available, create empty file (fallback)
-        touch "$VNC_PASSWORD_FILE"
-        echo "Warning: vncpasswd not available, VNC may not require password"
-    }
+    # Create password file with "termos123" as password
+    # Try TightVNC vncpasswd first, then fall back to TigerVNC
+    if command -v vncpasswd >/dev/null 2>&1; then
+        echo "termos123" | vncpasswd -f > "$VNC_PASSWORD_FILE" 2>/dev/null || {
+            # Fallback: create password file manually for TightVNC
+            echo -n "termos123" > "$VNC_PASSWORD_FILE"
+            echo "Created password file manually (TightVNC format)"
+        }
+    else
+        # Fallback: create basic password file
+        echo -n "termos123" > "$VNC_PASSWORD_FILE"
+        echo "Created basic password file (no vncpasswd available)"
+    fi
     chmod 600 "$VNC_PASSWORD_FILE"
-    echo "VNC password set to 'termos'"
+    echo "VNC password set to 'termos123'"
 fi
 
 # Create X startup script if it doesn't exist
@@ -147,7 +155,7 @@ echo "resolution:$VNC_RESOLUTION" >> "$VNC_DISPLAY_FILE"
 echo "started:$(date +%s)" >> "$VNC_DISPLAY_FILE"
 echo "VNC port information written to $VNC_DISPLAY_FILE"
 
-# Start VNC server in background with proper error handling
+# Start TightVNC server in background with proper error handling
 vncserver "$VNC_DISPLAY" \
     -geometry "$VNC_RESOLUTION" \
     -depth "$VNC_DEPTH" \
@@ -167,7 +175,7 @@ sleep 3
 if kill -0 $VNC_PID 2>/dev/null; then
     echo "VNC server started successfully on $VNC_DISPLAY (PID: $VNC_PID)"
     echo "Connect via: localhost:$VNC_PORT"
-    echo "Password: termos"
+    echo "Password: termos123"
     echo "Server is running in background"
 
     # Update the file with success status
