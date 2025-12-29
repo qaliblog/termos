@@ -129,7 +129,11 @@ public class RootfsManager {
         if ("alpine.tar.gz".equals(rootfsName)) {
             return "Alpine";
         } else if ("ubuntu.tar.gz".equals(rootfsName)) {
-            return "Ubuntu";
+            return "Ubuntu 20.04";
+        } else if ("ubuntu22.tar.gz".equals(rootfsName)) {
+            return "Ubuntu 22.04";
+        } else if ("kali.tar.gz".equals(rootfsName)) {
+            return "Kali Linux";
         } else {
             // Generate from filename
             String name = rootfsName.substring(0, rootfsName.lastIndexOf('.'));

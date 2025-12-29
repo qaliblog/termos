@@ -26,17 +26,35 @@ public class RootfsDownloader {
         public final String proot;
         public final String alpine;
         public final String ubuntu;
-        
-        public AbiUrls(String talloc, String proot, String alpine, String ubuntu) {
+        public final String ubuntu22;
+        public final String kali;
+
+        public AbiUrls(String talloc, String proot, String alpine, String ubuntu, String ubuntu22, String kali) {
             this.talloc = talloc;
             this.proot = proot;
             this.alpine = alpine;
             this.ubuntu = ubuntu;
+            this.ubuntu22 = ubuntu22;
+            this.kali = kali;
         }
-        
+
         public String getRootfsUrl(int workingMode) {
             // 0 = ALPINE, 2 = UBUNTU
             return workingMode == 2 ? ubuntu : alpine;
+        }
+
+        public String getRootfsUrl(String distroType) {
+            switch (distroType.toLowerCase()) {
+                case "ubuntu22":
+                    return ubuntu22;
+                case "kali":
+                    return kali;
+                case "ubuntu":
+                    return ubuntu;
+                case "alpine":
+                default:
+                    return alpine;
+            }
         }
     }
     
@@ -44,21 +62,27 @@ public class RootfsDownloader {
         "https://raw.githubusercontent.com/Xed-Editor/Karbon-PackagesX/main/x86_64/libtalloc.so.2",
         "https://raw.githubusercontent.com/Xed-Editor/Karbon-PackagesX/main/x86_64/proot",
         "https://dl-cdn.alpinelinux.org/alpine/v3.21/releases/x86_64/alpine-minirootfs-3.21.0-x86_64.tar.gz",
-        "https://cdimage.ubuntu.com/ubuntu-base/releases/22.04/release/ubuntu-base-22.04-base-amd64.tar.gz"
+        "https://cdimage.ubuntu.com/ubuntu-base/releases/20.04/release/ubuntu-base-20.04.5-base-amd64.tar.gz",
+        "https://cdimage.ubuntu.com/ubuntu-base/releases/22.04/release/ubuntu-base-22.04-base-amd64.tar.gz",
+        "https://kali.download/base-images/kali-2024.4/kali-linux-2024.4-rootfs-amd64.tar.xz"
     );
     
     private static final AbiUrls ABI_ARM64_V8A = new AbiUrls(
         "https://raw.githubusercontent.com/Xed-Editor/Karbon-PackagesX/main/aarch64/libtalloc.so.2",
         "https://raw.githubusercontent.com/Xed-Editor/Karbon-PackagesX/main/aarch64/proot",
         "https://dl-cdn.alpinelinux.org/alpine/v3.21/releases/aarch64/alpine-minirootfs-3.21.0-aarch64.tar.gz",
-        "https://cdimage.ubuntu.com/ubuntu-base/releases/22.04/release/ubuntu-base-22.04-base-arm64.tar.gz"
+        "https://cdimage.ubuntu.com/ubuntu-base/releases/20.04/release/ubuntu-base-20.04.5-base-arm64.tar.gz",
+        "https://cdimage.ubuntu.com/ubuntu-base/releases/22.04/release/ubuntu-base-22.04-base-arm64.tar.gz",
+        "https://kali.download/base-images/kali-2024.4/kali-linux-2024.4-rootfs-arm64.tar.xz"
     );
     
     private static final AbiUrls ABI_ARMEABI_V7A = new AbiUrls(
         "https://raw.githubusercontent.com/Xed-Editor/Karbon-PackagesX/main/arm/libtalloc.so.2",
         "https://raw.githubusercontent.com/Xed-Editor/Karbon-PackagesX/main/arm/proot",
         "https://dl-cdn.alpinelinux.org/alpine/v3.21/releases/armhf/alpine-minirootfs-3.21.0-armhf.tar.gz",
-        "https://cdimage.ubuntu.com/ubuntu-base/releases/22.04/release/ubuntu-base-22.04-base-armhf.tar.gz"
+        "https://cdimage.ubuntu.com/ubuntu-base/releases/20.04/release/ubuntu-base-20.04.5-base-armhf.tar.gz",
+        "https://cdimage.ubuntu.com/ubuntu-base/releases/22.04/release/ubuntu-base-22.04-base-armhf.tar.gz",
+        "https://kali.download/base-images/kali-2024.4/kali-linux-2024.4-rootfs-armhf.tar.xz"
     );
     
     /**

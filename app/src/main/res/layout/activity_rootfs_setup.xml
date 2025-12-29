@@ -65,13 +65,47 @@
                 android:id="@+id/rootfs_ubuntu"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Ubuntu"
+                android:text="Ubuntu 20.04"
                 android:padding="12dp" />
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Popular Debian-based Linux distribution"
+                android:text="Ubuntu 20.04 LTS - stable and popular Debian-based distribution"
+                android:textSize="12sp"
+                android:textColor="@android:color/darker_gray"
+                android:paddingStart="32dp"
+                android:paddingEnd="16dp"
+                android:layout_marginBottom="8dp" />
+
+            <RadioButton
+                android:id="@+id/rootfs_ubuntu22"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Ubuntu 22.04"
+                android:padding="12dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Ubuntu 22.04 LTS - latest LTS with modern features"
+                android:textSize="12sp"
+                android:textColor="@android:color/darker_gray"
+                android:paddingStart="32dp"
+                android:paddingEnd="16dp"
+                android:layout_marginBottom="8dp" />
+
+            <RadioButton
+                android:id="@+id/rootfs_kali"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Kali Linux"
+                android:padding="12dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Kali Linux - penetration testing and security tools"
                 android:textSize="12sp"
                 android:textColor="@android:color/darker_gray"
                 android:paddingStart="32dp"
