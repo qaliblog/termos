@@ -90,9 +90,6 @@ public class VNCConnectionManager {
     private RemoteConnection remoteConnection;
     private RemoteCanvasHandler handler;
 
-    // Alternative simple VNC viewer for maximum compatibility
-    private SimpleVNCViewer simpleViewer;
-    private boolean useSimpleViewer = false;
     private LinuxCommandExecutor commandExecutor;
     private TerminalSessionClient serviceClient;
     private boolean isConnected = false;
@@ -207,8 +204,6 @@ public class VNCConnectionManager {
         // Apply input mode settings from preferences
         applyInputModeSettings();
 
-        // Initialize simple viewer as alternative
-        initializeSimpleViewer();
 
         Log.d(TAG, "VNC connection manager initialized");
 
@@ -217,45 +212,6 @@ public class VNCConnectionManager {
         // until the connection actually starts or fails.
     }
 
-    /**
-     * Initialize the simple VNC viewer as fallback
-     */
-    private void initializeSimpleViewer() {
-        if (activityContext != null) {
-            simpleViewer = new SimpleVNCViewer(activityContext);
-            simpleViewer.setVNCListener(new SimpleVNCViewer.VNCListener() {
-                @Override
-                public void onConnected() {
-                    Log.d(TAG, "SSH VNC viewer connected");
-                    connected = true;
-                    isPaused = false;
-                    if (statusCallbackFragment != null) {
-                        statusCallbackFragment.onVncConnected();
-                    }
-                }
-
-                @Override
-                public void onDisconnected() {
-                    Log.d(TAG, "SSH VNC viewer disconnected");
-                    connected = false;
-                    isPaused = false;
-                    if (statusCallbackFragment != null) {
-                        statusCallbackFragment.onVncConnectionFailed("Disconnected from VNC server");
-                    }
-                }
-
-                @Override
-                public void onError(String error) {
-                    Log.e(TAG, "SSH VNC viewer error: " + error);
-                    connected = false;
-                    isPaused = false;
-                    if (statusCallbackFragment != null) {
-                        statusCallbackFragment.onVncConnectionFailed("VNC connection error: " + error);
-                    }
-                }
-            });
-        }
-    }
 
     /**
      * Apply input mode settings from preferences
@@ -421,18 +377,10 @@ public class VNCConnectionManager {
                 attemptConnection();
             }, 1000); // Wait 1 second before trying next type
         } else {
-            // All bVNC connection types tried, try simple viewer as fallback
-            Log.d(TAG, "All bVNC connection types failed, trying simple VNC viewer");
-
-            if (simpleViewer != null) {
-                useSimpleViewer = true;
-                // Switch to simple viewer
-                switchToSimpleViewer();
-            } else {
-                Log.e(TAG, "Simple viewer not available, offering external viewer");
-                if (statusCallbackFragment != null) {
-                    offerExternalVNCViewer();
-                }
+            // All bVNC connection types tried, offer external VNC viewers
+            Log.d(TAG, "All bVNC connection types failed, offering external VNC viewers");
+            if (statusCallbackFragment != null) {
+                offerExternalVNCViewer();
             }
         }
     }
@@ -547,65 +495,6 @@ public class VNCConnectionManager {
         }
     }
 
-    /**
-     * Switch to simple VNC viewer when bVNC fails
-     */
-    private void switchToSimpleViewer() {
-        if (simpleViewer == null || activityContext == null) {
-            Log.e(TAG, "Cannot switch to simple viewer: not initialized");
-            if (statusCallbackFragment != null) {
-                offerExternalVNCViewer();
-            }
-            return;
-        }
-
-        // Switch to simple viewer in the VNC container
-        new Handler(Looper.getMainLooper()).post(() -> {
-            try {
-                // Find the VNC container in the current activity/fragment
-                android.view.View vncContainer = activityContext.findViewById(R.id.vnc_container);
-                if (vncContainer instanceof android.widget.FrameLayout) {
-                    android.widget.FrameLayout container = (android.widget.FrameLayout) vncContainer;
-
-                    // Hide bVNC canvas
-                    if (canvas != null) {
-                        canvas.setVisibility(android.view.View.GONE);
-                    }
-
-                    // Remove existing simple viewer if present
-                    android.view.View existingViewer = container.findViewWithTag("simple_vnc_viewer");
-                    if (existingViewer != null) {
-                        container.removeView(existingViewer);
-                    }
-
-                    // Add simple viewer to container
-                    simpleViewer.setTag("simple_vnc_viewer");
-                    android.widget.FrameLayout.LayoutParams params =
-                        new android.widget.FrameLayout.LayoutParams(
-                            android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
-                            android.widget.FrameLayout.LayoutParams.MATCH_PARENT);
-                    container.addView(simpleViewer, params);
-
-                    Log.d(TAG, "Simple VNC viewer added to container, connecting...");
-
-                    // Connect with simple viewer
-                    simpleViewer.connect(connection.getAddress(),
-                                       connection.getPort(),
-                                       connection.getPassword());
-                } else {
-                    Log.e(TAG, "VNC container not found");
-                    if (statusCallbackFragment != null) {
-                        offerExternalVNCViewer();
-                    }
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Error switching to simple viewer", e);
-                if (statusCallbackFragment != null) {
-                    offerExternalVNCViewer();
-                }
-            }
-        });
-    }
 
     /**
      * Check if an app is installed
