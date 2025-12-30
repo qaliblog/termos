@@ -5,13 +5,21 @@
     android:layout_height="match_parent"
     android:background="@android:color/black">
 
-    <com.iiordanov.bVNC.RemoteCanvas
-        android:id="@+id/vnc_canvas"
+    <!-- VNC Viewer Container (holds both bVNC and simple viewer) -->
+    <FrameLayout
+        android:id="@+id/vnc_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:focusable="true"
-        android:focusableInTouchMode="true"
-        android:visibility="gone" />
+        android:visibility="gone">
+
+        <com.iiordanov.bVNC.RemoteCanvas
+            android:id="@+id/vnc_canvas"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+    </FrameLayout>
 
     <!-- VNC Connection Form -->
     <ScrollView

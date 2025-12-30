@@ -44,6 +44,9 @@ public class OstabFragment extends Fragment {
     private Handler uiHandler;
     private boolean isVncConnected = false;
 
+    // Simple VNC viewer container
+    private android.widget.FrameLayout vncContainer;
+
 
     @Override
     public void onAttach(@NonNull Activity activity) {
@@ -62,6 +65,7 @@ public class OstabFragment extends Fragment {
 
         // Initialize UI elements
         vncCanvas = root.findViewById(R.id.vnc_canvas);
+        vncContainer = root.findViewById(R.id.vnc_container);
         connectionForm = root.findViewById(R.id.vnc_connection_form);
         statusOverlay = root.findViewById(R.id.vnc_status_overlay);
         statusTitle = root.findViewById(R.id.vnc_status_title);
@@ -221,8 +225,8 @@ public class OstabFragment extends Fragment {
             if (statusOverlay != null) {
                 statusOverlay.setVisibility(View.GONE);
             }
-            if (vncCanvas != null) {
-                vncCanvas.setVisibility(View.GONE);
+            if (vncContainer != null) {
+                vncContainer.setVisibility(View.GONE);
             }
         });
     }
@@ -248,7 +252,9 @@ public class OstabFragment extends Fragment {
                 this.helpText.setVisibility(View.GONE);
             }
             statusOverlay.setVisibility(View.VISIBLE);
-            vncCanvas.setVisibility(View.GONE);
+            if (vncContainer != null) {
+                vncContainer.setVisibility(View.GONE);
+            }
         });
     }
 
@@ -261,7 +267,7 @@ public class OstabFragment extends Fragment {
     }
 
     /**
-     * Hide status overlay and show VNC canvas
+     * Hide status overlay and show VNC viewer
      */
     public void showVncCanvas() {
         uiHandler.post(() -> {
@@ -271,8 +277,8 @@ public class OstabFragment extends Fragment {
             if (statusOverlay != null) {
                 statusOverlay.setVisibility(View.GONE);
             }
-            if (vncCanvas != null) {
-                vncCanvas.setVisibility(View.VISIBLE);
+            if (vncContainer != null) {
+                vncContainer.setVisibility(View.VISIBLE);
             }
         });
     }
