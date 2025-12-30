@@ -53,8 +53,8 @@ android {
             exclude group: 'com.android.support', module: 'versionedparcelable'
         }
 
-        // VNC library for better compatibility
-        implementation 'com.sshtools:vnc-viewer:3.0.1'
+        // VNC library for better compatibility - try JavaFX version
+        implementation 'com.sshtools:vnc-viewer-javafx:3.0.1'
         // Networking support
         implementation 'io.netty:netty-all:4.1.94.Final'
         implementation project(":common")
