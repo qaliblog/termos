@@ -226,7 +226,7 @@ public class VNCConnectionManager {
             simpleViewer.setVNCListener(new SimpleVNCViewer.VNCListener() {
                 @Override
                 public void onConnected() {
-                    Log.d(TAG, "Simple VNC viewer connected");
+                    Log.d(TAG, "SSH VNC viewer connected");
                     connected = true;
                     isPaused = false;
                     if (statusCallbackFragment != null) {
@@ -236,7 +236,7 @@ public class VNCConnectionManager {
 
                 @Override
                 public void onDisconnected() {
-                    Log.d(TAG, "Simple VNC viewer disconnected");
+                    Log.d(TAG, "SSH VNC viewer disconnected");
                     connected = false;
                     isPaused = false;
                     if (statusCallbackFragment != null) {
@@ -246,7 +246,7 @@ public class VNCConnectionManager {
 
                 @Override
                 public void onError(String error) {
-                    Log.e(TAG, "Simple VNC viewer error: " + error);
+                    Log.e(TAG, "SSH VNC viewer error: " + error);
                     connected = false;
                     isPaused = false;
                     if (statusCallbackFragment != null) {
