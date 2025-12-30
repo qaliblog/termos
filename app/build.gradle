@@ -53,8 +53,6 @@ android {
             exclude group: 'com.android.support', module: 'versionedparcelable'
         }
 
-        // VNC viewer library from JitPack
-        implementation 'com.github.iiordanov:android-vnc-viewer:0.1.0'
         // Networking support for VNC connections
         implementation 'io.netty:netty-all:4.1.94.Final'
         implementation project(":common")
