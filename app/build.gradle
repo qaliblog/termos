@@ -53,9 +53,9 @@ android {
             exclude group: 'com.android.support', module: 'versionedparcelable'
         }
 
-        // VNC library for better compatibility - try JavaFX version
-        implementation 'com.sshtools:vnc-viewer-javafx:3.0.1'
-        // Networking support
+        // VNC viewer library from JitPack
+        implementation 'com.github.iiordanov:android-vnc-viewer:0.1.0'
+        // Networking support for VNC connections
         implementation 'io.netty:netty-all:4.1.94.Final'
         implementation project(":common")
     }
