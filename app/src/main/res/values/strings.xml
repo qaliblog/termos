@@ -251,6 +251,17 @@
     <string name="donate_preference_title">Donate</string>
 
     <!-- VNC Settings -->
+    <string-array name="vnc_viewer_type_entries">
+        <item>Built-in Viewer</item>
+        <item>External App (RVNC Viewer)</item>
+        <item>External App (RealVNC Viewer)</item>
+    </string-array>
+    <string-array name="vnc_viewer_type_values">
+        <item>builtin</item>
+        <item>rvnc</item>
+        <item>realvnc</item>
+    </string-array>
+
     <string-array name="vnc_input_mode_entries">
         <item>Touch Mode</item>
         <item>Mouse Mode</item>

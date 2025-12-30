@@ -3,6 +3,8 @@ package com.termos.app.vnc;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -23,6 +25,11 @@ import com.termux.terminal.TerminalSessionClient;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.undatech.opaque.RemoteClientLibConstants;
 import com.iiordanov.bVNC.protocol.RemoteConnection;
+
+// Alternative VNC implementation for better compatibility
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import java.net.URLEncoder;
 
 /**
  * Manages VNC connection lifecycle for the OS tab.
@@ -367,23 +374,12 @@ public class VNCConnectionManager {
                 attemptConnection();
             }, 1000); // Wait 1 second before trying next type
         } else {
-            // All connection types tried, give up
-            Log.e(TAG, "All connection types tried, giving up");
-            String triedMethods = "Tried authentication methods:\n";
-            for (int type : connectionTypesToTry) {
-                triedMethods += "• " + getConnectionTypeName(type) + "\n";
-            }
+            // All connection types tried, give up with bVNC
+            Log.e(TAG, "All bVNC connection types tried, offering external viewer as fallback");
 
             if (statusCallbackFragment != null) {
-                statusCallbackFragment.onVncConnectionFailed(
-                    "Unable to connect with any supported authentication method.\n\n" +
-                    triedMethods + "\n" +
-                    "Possible issues:\n" +
-                    "• Server uses unsupported VNC authentication (try RealVNC Viewer)\n" +
-                    "• Server requires specific security settings\n" +
-                    "• Network firewall blocking connection\n" +
-                    "• Try a different VNC server software"
-                );
+                // Offer to try external VNC viewer
+                offerExternalVNCViewer();
             }
         }
     }
@@ -400,6 +396,114 @@ public class VNCConnectionManager {
             case com.iiordanov.bVNC.Constants.CONN_TYPE_ULTRAVNC: return "UltraVNC";
             case com.iiordanov.bVNC.Constants.CONN_TYPE_STUNNEL: return "SSL Tunnel";
             default: return "Unknown (" + connType + ")";
+        }
+    }
+
+    /**
+     * Offer to use an external VNC viewer app as fallback
+     */
+    private void offerExternalVNCViewer() {
+        if (activityContext == null) return;
+
+        activityContext.runOnUiThread(() -> {
+            AlertDialog.Builder builder = new AlertDialog.Builder(activityContext);
+            builder.setTitle("Connection Failed")
+                    .setMessage("Unable to connect with built-in VNC viewer.\n\n" +
+                              "Try using an external VNC viewer app?\n\n" +
+                              "Recommended apps:\n" +
+                              "• RealVNC Viewer\n" +
+                              "• RVNC Viewer (the one that works)\n" +
+                              "• MultiVNC\n" +
+                              "• androidVNC")
+                    .setPositiveButton("Open RVNC Viewer", (dialog, which) -> {
+                        openExternalVNCViewer("rvnc");
+                    })
+                    .setNeutralButton("Open RealVNC Viewer", (dialog, which) -> {
+                        openExternalVNCViewer("realvnc");
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
+        });
+    }
+
+    /**
+     * Open external VNC viewer app
+     */
+    private void openExternalVNCViewer(String viewerType) {
+        if (activityContext == null) return;
+
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+
+            // Create VNC connection URL
+            String host = connection.getAddress();
+            int port = connection.getPort();
+            String password = connection.getPassword();
+
+            // Different apps use different URL schemes
+            switch (viewerType) {
+                case "rvnc":
+                    // RVNC Viewer - might use custom scheme or generic
+                    intent.setPackage("com.iiordanov.freebVNC"); // Try bVNC first
+                    if (!isAppInstalled("com.iiordanov.freebVNC")) {
+                        // Fallback to generic VNC URL
+                        intent = new Intent(Intent.ACTION_VIEW, Uri.parse("vnc://" + host + ":" + port));
+                    }
+                    break;
+
+                case "realvnc":
+                    // RealVNC Viewer
+                    intent.setPackage("com.realvnc.viewer.android");
+                    if (!isAppInstalled("com.realvnc.viewer.android")) {
+                        intent = new Intent(Intent.ACTION_VIEW, Uri.parse("vnc://" + host + ":" + port));
+                    }
+                    break;
+
+                default:
+                    // Generic VNC URL
+                    intent = new Intent(Intent.ACTION_VIEW, Uri.parse("vnc://" + host + ":" + port));
+                    break;
+            }
+
+            // Add connection parameters if supported
+            intent.putExtra("host", host);
+            intent.putExtra("port", port);
+            if (password != null && !password.isEmpty()) {
+                intent.putExtra("password", password);
+            }
+
+            activityContext.startActivity(intent);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to open external VNC viewer", e);
+            // Fallback: show message to user
+            activityContext.runOnUiThread(() -> {
+                AlertDialog.Builder builder = new AlertDialog.Builder(activityContext);
+                builder.setTitle("External Viewer Not Found")
+                        .setMessage("Please install a VNC viewer app like:\n\n" +
+                                  "• RVNC Viewer\n" +
+                                  "• RealVNC Viewer\n" +
+                                  "• MultiVNC\n\n" +
+                                  "Then try connecting to:\n" +
+                                  "Host: " + connection.getAddress() + "\n" +
+                                  "Port: " + connection.getPort() + "\n" +
+                                  "Password: " + (connection.getPassword() != null ? "[set]" : "[none]"))
+                        .setPositiveButton("OK", null)
+                        .show();
+            });
+        }
+    }
+
+    /**
+     * Check if an app is installed
+     */
+    private boolean isAppInstalled(String packageName) {
+        if (activityContext == null) return false;
+        try {
+            activityContext.getPackageManager().getPackageInfo(packageName, 0);
+            return true;
+        } catch (Exception e) {
+            return false;
         }
     }
 
@@ -456,9 +560,19 @@ public class VNCConnectionManager {
                    "' password: '" + (password != null && !password.isEmpty() ? "***" : "(empty)") +
                    "' (user provided credentials)");
 
-        // Since user manually provided connection details, assume they know the server is running
-        // Don't try to auto-start VNC server - just attempt direct connection
-        attemptConnection();
+        // Check viewer type preference
+        TermuxAppSharedPreferences preferences = TermuxAppSharedPreferences.build(context, false);
+        String viewerType = preferences != null ? preferences.getVNCViewerType() : "builtin";
+
+        if ("builtin".equals(viewerType)) {
+            // Use built-in bVNC viewer
+            // Since user manually provided connection details, assume they know the server is running
+            // Don't try to auto-start VNC server - just attempt direct connection
+            attemptConnection();
+        } else {
+            // Use external VNC viewer app
+            openExternalVNCViewer(viewerType);
+        }
     }
 
     /**

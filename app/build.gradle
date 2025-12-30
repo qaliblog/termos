@@ -52,6 +52,10 @@ android {
             exclude group: 'com.android.support', module: 'support-compat'
             exclude group: 'com.android.support', module: 'versionedparcelable'
         }
+
+        // Alternative VNC libraries for better compatibility
+        implementation 'com.github.bk138.multivnc:multivnc:1.0.0'
+        implementation 'com.github.barbeau:gpstest:3.4.0'
         implementation project(":common")
     }
 

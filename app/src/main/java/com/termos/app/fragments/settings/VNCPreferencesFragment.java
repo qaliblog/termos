@@ -48,7 +48,9 @@ class VNCPreferencesDataStore extends PreferenceDataStore {
 
     @Override
     public String getString(String key, String defValue) {
-        if ("vnc_input_mode".equals(key)) {
+        if ("vnc_viewer_type".equals(key)) {
+            return mPreferences.getVNCViewerType();
+        } else if ("vnc_input_mode".equals(key)) {
             return mPreferences.getVNCInputMode();
         }
         return defValue;
@@ -56,7 +58,9 @@ class VNCPreferencesDataStore extends PreferenceDataStore {
 
     @Override
     public void putString(String key, String value) {
-        if ("vnc_input_mode".equals(key)) {
+        if ("vnc_viewer_type".equals(key)) {
+            mPreferences.setVNCViewerType(value);
+        } else if ("vnc_input_mode".equals(key)) {
             mPreferences.setVNCInputMode(value);
         }
     }

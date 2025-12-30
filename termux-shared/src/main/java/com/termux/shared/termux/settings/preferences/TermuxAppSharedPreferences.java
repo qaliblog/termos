@@ -23,7 +23,9 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
 
     private static final String LOG_TAG = "TermuxAppSharedPreferences";
 
-    // VNC input mode constants
+    // VNC settings constants
+    private static final String KEY_VNC_VIEWER_TYPE = "vnc_viewer_type";
+    private static final String DEFAULT_VALUE_VNC_VIEWER_TYPE = "builtin";
     private static final String KEY_VNC_INPUT_MODE = "vnc_input_mode";
     private static final String DEFAULT_VALUE_VNC_INPUT_MODE = "touch";
 
@@ -263,6 +265,14 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
     }
 
 
+
+    public String getVNCViewerType() {
+        return SharedPreferenceUtils.getString(mSharedPreferences, KEY_VNC_VIEWER_TYPE, DEFAULT_VALUE_VNC_VIEWER_TYPE, false);
+    }
+
+    public void setVNCViewerType(String value) {
+        SharedPreferenceUtils.setString(mSharedPreferences, KEY_VNC_VIEWER_TYPE, value, false);
+    }
 
     public String getVNCInputMode() {
         return SharedPreferenceUtils.getString(mSharedPreferences, KEY_VNC_INPUT_MODE, DEFAULT_VALUE_VNC_INPUT_MODE, false);
