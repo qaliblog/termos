@@ -53,10 +53,9 @@ android {
             exclude group: 'com.android.support', module: 'versionedparcelable'
         }
 
-        // Alternative VNC libraries for better compatibility
-        implementation 'com.github.bk138.multivnc:multivnc:1.0.0'
-        implementation 'com.github.barbeau:gpstest:3.4.0'
-        // Custom VNC implementation for maximum compatibility
+        // VNC library for better compatibility
+        implementation 'com.sshtools:vnc-viewer:3.0.1'
+        // Networking support
         implementation 'io.netty:netty-all:4.1.94.Final'
         implementation project(":common")
     }
