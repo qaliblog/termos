@@ -562,19 +562,13 @@ public class VNCConnectionManager {
                    "' password: '" + (password != null && !password.isEmpty() ? "***" : "(empty)") +
                    "' (user provided credentials)");
 
-        // Check viewer type preference
+        // Always use external VNC viewer since built-in viewer has compatibility issues
+        // Check viewer type preference for which external app to use
         TermuxAppSharedPreferences preferences = TermuxAppSharedPreferences.build(context, false);
-        String viewerType = preferences != null ? preferences.getVNCViewerType() : "builtin";
+        String viewerType = preferences != null ? preferences.getVNCViewerType() : "rvnc";
 
-        if ("builtin".equals(viewerType)) {
-            // Use built-in bVNC viewer
-            // Since user manually provided connection details, assume they know the server is running
-            // Don't try to auto-start VNC server - just attempt direct connection
-            attemptConnection();
-        } else {
-            // Use external VNC viewer app
-            openExternalVNCViewer(viewerType);
-        }
+        // Use external VNC viewer app (built-in viewer has compatibility issues)
+        openExternalVNCViewer(viewerType);
     }
 
     /**

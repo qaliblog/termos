@@ -93,14 +93,18 @@ public class OstabFragment extends Fragment {
 
         // Initialize VNC manager when fragment becomes visible
         if (vncManager != null && vncCanvas != null && activity != null) {
-            try {
-                vncManager.initialize(vncCanvas, activity);
+        try {
+            vncManager.initialize(vncCanvas, activity);
 
-                // Set service client for command execution
-                TermuxActivity termuxActivity = (TermuxActivity) activity;
-                if (termuxActivity.getTermuxService() != null) {
-                    vncManager.setServiceClient(termuxActivity.getTermuxService().getTermuxTerminalSessionClient());
-                }
+            // Set service client for command execution
+            TermuxActivity termuxActivity = (TermuxActivity) activity;
+            if (termuxActivity.getTermuxService() != null) {
+                vncManager.setServiceClient(termuxActivity.getTermuxService().getTermuxTerminalSessionClient());
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to initialize VNC connection", e);
+            showErrorStatus("Connection Failed", "Failed to initialize VNC: " + e.getMessage());
+        }
 
         // Show connection form instead of auto-connecting
         showConnectionForm();
