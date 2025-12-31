@@ -99,11 +99,7 @@ public class VNCConnectionManager {
     private static final int CONNECTION_TIMEOUT_MS = 15000; // 15 seconds timeout for faster retries
     private static final int CONNECTION_RETRY_INTERVAL_MS = 2000; // 2 seconds between connection retries
     private int[] connectionTypesToTry = {
-        com.iiordanov.bVNC.Constants.CONN_TYPE_PLAIN,
-        com.iiordanov.bVNC.Constants.CONN_TYPE_ANONTLS,
-        com.iiordanov.bVNC.Constants.CONN_TYPE_VENCRYPT,
-        com.iiordanov.bVNC.Constants.CONN_TYPE_ULTRAVNC,
-        com.iiordanov.bVNC.Constants.CONN_TYPE_STUNNEL
+        com.iiordanov.bVNC.Constants.CONN_TYPE_PLAIN
     };
     private int currentConnectionTypeIndex = 0;
     private Handler timeoutHandler;
@@ -336,6 +332,9 @@ public class VNCConnectionManager {
     private void attemptConnection() {
         connectionRetryCount++;
 
+        Log.d(TAG, "Starting connection attempt " + connectionRetryCount + " to " +
+                   connection.getAddress() + ":" + connection.getPort());
+
         // Cancel any existing timeout handler
         if (timeoutHandler != null) {
             timeoutHandler.removeCallbacksAndMessages(null);
@@ -562,13 +561,19 @@ public class VNCConnectionManager {
                    "' password: '" + (password != null && !password.isEmpty() ? "***" : "(empty)") +
                    "' (user provided credentials)");
 
-        // Always use external VNC viewer since built-in viewer has compatibility issues
-        // Check viewer type preference for which external app to use
+        // Check viewer type preference
         TermuxAppSharedPreferences preferences = TermuxAppSharedPreferences.build(context, false);
-        String viewerType = preferences != null ? preferences.getVNCViewerType() : "rvnc";
+        String viewerType = preferences != null ? preferences.getVNCViewerType() : "builtin";
 
-        // Use external VNC viewer app (built-in viewer has compatibility issues)
-        openExternalVNCViewer(viewerType);
+        if ("builtin".equals(viewerType)) {
+            // Use built-in bVNC viewer
+            // Since user manually provided connection details, assume they know the server is running
+            // Don't try to auto-start VNC server - just attempt direct connection
+            attemptConnection();
+        } else {
+            // Use external VNC viewer app
+            openExternalVNCViewer(viewerType);
+        }
     }
 
     /**
@@ -823,37 +828,49 @@ public class VNCConnectionManager {
             return;
         }
 
-        // Monitor connection state changes
-        // We'll use a simple approach: check if canvas becomes visible
-        uiHandler.postDelayed(() -> {
-            checkConnectionStatus();
-        }, 2000); // Check after 2 seconds
+        Log.d(TAG, "Setting up connection monitoring");
 
-        // Also check periodically during connection attempts
-        for (int i = 0; i < 10; i++) {
+        // Monitor connection state changes more frequently
+        for (int i = 1; i <= 15; i++) {
             final int attempt = i;
             uiHandler.postDelayed(() -> {
-                if (!isConnected && statusCallbackFragment != null) {
-                    // Still trying to connect, update status
-                    Log.d(TAG, "Connection attempt " + (attempt + 1) + " in progress...");
+                if (!isConnected) {
+                    Log.d(TAG, "Connection monitoring check " + attempt + "/15");
+                    checkConnectionStatus();
                 }
-            }, 3000L * (i + 1));
+            }, 1000L * i); // Check every second for 15 seconds
         }
+
+        // Final check - if still not connected, consider it failed
+        uiHandler.postDelayed(() -> {
+            if (!isConnected && statusCallbackFragment != null) {
+                Log.d(TAG, "Connection monitoring timeout - considering connection failed");
+                statusCallbackFragment.onVncConnectionFailed("Unable to establish VNC connection. The VNC server may not be running or may require different authentication.");
+            }
+        }, 16000); // 16 seconds total timeout
     }
 
     /**
-     * Check if connection was successful by looking for canvas updates
+     * Check if connection was successful
      */
     private void checkConnectionStatus() {
         uiHandler.post(() -> {
             try {
-                if (canvas != null && canvas.getVisibility() == View.VISIBLE) {
-                    // Canvas is visible, connection likely successful
+                // Check if we have a valid RFB connection
+                boolean connectionEstablished = false;
+                if (remoteConnection != null && remoteConnection.rfbConn != null) {
+                    // Try to determine if connection is active by checking for graphics settings
+                    // This indicates the VNC handshake completed successfully
+                    connectionEstablished = remoteConnection.graphicsSettingsReceived;
+                }
+
+                if (connectionEstablished) {
+                    // Connection successful
                     isConnected = true;
                     if (statusCallbackFragment != null) {
                         statusCallbackFragment.onVncConnected();
                     }
-                    Log.d(TAG, "Connection successful - canvas is visible");
+                    Log.d(TAG, "Connection successful - VNC handshake completed");
                 } else if (statusCallbackFragment != null) {
                     // Check if any dialogs are still showing
                     boolean hasDialog = (customProgressDialog != null && customProgressDialog.isShowing()) ||
@@ -861,7 +878,9 @@ public class VNCConnectionManager {
 
                     if (!hasDialog && !isConnected) {
                         // No dialogs showing and not connected - likely failed
-                        statusCallbackFragment.onVncConnectionFailed("Unable to connect to VNC server. Make sure the desktop environment is running.");
+                        Log.d(TAG, "Connection appears to have failed - no active dialogs and no connection established");
+                        // Don't immediately fail - give it more time
+                        // The connection might still be in progress
                     }
                 }
             } catch (Exception e) {
