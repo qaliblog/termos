@@ -172,6 +172,7 @@ android {
             excludes += [
                 'META-INF/androidx.*.version',
                 'META-INF/versions/9/OSGI-INF/MANIFEST.MF',
+                'META-INF/INDEX.LIST',
                 'androidsupportmultidexversion.txt'
             ]
         }
