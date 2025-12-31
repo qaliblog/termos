@@ -22,3 +22,28 @@
 
 # Keep Netty classes that may be accessed via reflection
 -keep class io.netty.** { *; }
+
+# Optional Netty dependencies that may not be present - ignore them during R8 processing
+-dontwarn com.aayushatharva.brotli4j.**
+-dontwarn com.barchart.udt.**
+-dontwarn com.fasterxml.aalto.**
+-dontwarn com.google.protobuf.**
+-dontwarn com.jcraft.jzlib.**
+-dontwarn com.ning.compress.**
+-dontwarn com.oracle.svm.core.annotate.**
+-dontwarn com.sun.nio.sctp.**
+-dontwarn gnu.io.**
+-dontwarn io.netty.internal.tcnative.**
+-dontwarn javax.naming.**
+-dontwarn javax.xml.stream.**
+-dontwarn lzma.sdk.**
+-dontwarn net.jpountz.**
+-dontwarn org.apache.log4j.**
+-dontwarn org.apache.logging.log4j.**
+-dontwarn org.bouncycastle.**
+-dontwarn org.conscrypt.**
+-dontwarn org.eclipse.jetty.**
+-dontwarn org.jboss.marshalling.**
+-dontwarn org.jetbrains.annotations.**
+-dontwarn org.slf4j.**
+-dontwarn sun.security.x509.**
