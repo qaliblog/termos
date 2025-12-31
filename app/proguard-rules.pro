@@ -15,3 +15,10 @@
 # https://issuetracker.google.com/issues/189001730
 # https://android-review.googlesource.com/c/platform/frameworks/support/+/1757630
 -keep class androidx.window.** { *; }
+
+# Netty BlockHound integration - BlockHound is optional and may not be present
+-dontwarn io.netty.util.internal.Hidden$NettyBlockHoundIntegration
+-dontwarn reactor.blockhound.integration.BlockHoundIntegration
+
+# Keep Netty classes that may be accessed via reflection
+-keep class io.netty.** { *; }
