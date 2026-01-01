@@ -858,7 +858,7 @@ public class VNCConnectionManager {
             try {
                 // Check if we have a valid RFB connection
                 boolean connectionEstablished = false;
-                if (remoteConnection != null && remoteConnection.rfbConn != null) {
+                if (remoteConnection != null && remoteConnection.getRfbConn() != null) {
                     // Try to determine if connection is active by checking for graphics settings
                     // This indicates the VNC handshake completed successfully
                     connectionEstablished = remoteConnection.graphicsSettingsReceived;
