@@ -127,12 +127,12 @@ public class WebViewVNCManager {
     /**
      * Connect to VNC server
      */
-    public void connect(String host, int port, String password) {
+    public void connect(String host, int port, String username, String password) {
         this.currentHost = host;
         this.currentPort = port;
         this.currentPassword = password;
 
-        Log.d(TAG, "Connecting to VNC: " + host + ":" + port);
+        Log.d(TAG, "Connecting to VNC: " + host + ":" + port + " as user: " + (username != null ? username : "(none)"));
 
         // Check if VNC server is running first
         if (serviceClient != null) {

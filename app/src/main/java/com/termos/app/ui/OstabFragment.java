@@ -185,7 +185,7 @@ public class OstabFragment extends Fragment implements WebViewVNCManager.VNCStat
         Log.d(TAG, "Attempting VNC connection to " + host + ":" + port + " as user: " + (username.isEmpty() ? "(none)" : username));
 
         try {
-            vncManager.connect(host, port, username.isEmpty() ? null : username, password);
+            vncManager.connect(host, port, username, password);
         } catch (Exception e) {
             Log.e(TAG, "Failed to start VNC connection", e);
             showErrorStatus("Connection Failed", "Failed to start connection: " + e.getMessage());
