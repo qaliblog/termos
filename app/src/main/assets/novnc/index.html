@@ -216,36 +216,45 @@
             }
 
             attemptVNCConnection() {
-                this.updateStatus('Attempting VNC connection...', 'connecting');
+                this.updateStatus('VNC server available! Opening external viewer...', 'connected');
 
-                // Since WebView can't directly handle VNC protocol, we'll provide guidance
-                // and try to open external apps
+                // Since WebView can't handle VNC URLs, communicate with Android to open external app
+                if (typeof Android !== 'undefined' && Android.openExternalVNC) {
+                    Android.openExternalVNC(this.host, this.port, this.password || '');
+                } else {
+                    // Fallback: show connection info and instructions
+                    this.showConnectionInfo();
+                }
+            }
 
-                setTimeout(() => {
-                    // Create a VNC URL that external apps can handle
-                    const vncUrl = `vnc://${this.host}:${this.port}`;
-                    const fullUrl = this.password ?
-                        `${vncUrl}?password=${encodeURIComponent(this.password)}` : vncUrl;
+            showConnectionInfo() {
+                this.updateStatus(
+                    'Ready to connect!\n\n' +
+                    'Use one of these VNC viewers:\n\n' +
+                    '📱 RealVNC Viewer\n' +
+                    '📱 bVNC Free\n' +
+                    '📱 PocketVNC\n\n' +
+                    'Connection Details:\n' +
+                    `Host: ${this.host}\n` +
+                    `Port: ${this.port}\n` +
+                    `Password: ${this.password ? '***' : '(none)'}\n\n` +
+                    'Tap the button below to try opening an external app.',
+                    'connected'
+                );
 
-                    // Try to open external VNC app
-                    window.location.href = fullUrl;
-
-                    // Show status while waiting
-                    setTimeout(() => {
-                        this.updateStatus(
-                            'Opening VNC connection in external app...\n\n' +
-                            'If no app opens, make sure you have a VNC viewer installed:\n' +
-                            '• RealVNC Viewer\n' +
-                            '• bVNC Free\n' +
-                            '• PocketVNC\n\n' +
-                            'Connection details:\n' +
-                            `Host: ${this.host}\n` +
-                            `Port: ${this.port}\n` +
-                            `Password: ${this.password ? '***' : '(none)'}`,
-                            'connected'
-                        );
-                    }, 1500);
-                }, 1000);
+                // Add a button to manually trigger external app opening
+                const controls = document.querySelector('.controls');
+                const openBtn = document.createElement('button');
+                openBtn.className = 'btn-primary';
+                openBtn.textContent = 'Open External VNC App';
+                openBtn.onclick = () => {
+                    if (typeof Android !== 'undefined' && Android.openExternalVNC) {
+                        Android.openExternalVNC(this.host, this.port, this.password || '');
+                    } else {
+                        alert('External app opening not available');
+                    }
+                };
+                controls.appendChild(openBtn);
             }
 
             drawFrame(frameData) {

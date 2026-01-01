@@ -2,6 +2,8 @@ package com.termos.app.vnc;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -102,7 +104,8 @@ public class WebViewVNCManager {
             "window.AndroidVNC = {" +
             "   onConnected: function() { if(typeof Android !== 'undefined') Android.onVncConnected(); }," +
             "   onConnectionFailed: function(error) { if(typeof Android !== 'undefined') Android.onVncConnectionFailed(error); }," +
-            "   onDisconnected: function() { if(typeof Android !== 'undefined') Android.onVncDisconnected(); }" +
+            "   onDisconnected: function() { if(typeof Android !== 'undefined') Android.onVncDisconnected(); }," +
+            "   openExternalVNC: function(host, port, password) { if(typeof Android !== 'undefined') Android.openExternalVNC(host, port, password); }" +
             "};" +
             // Also set up a simple status indicator
             "console.log('Termos VNC Viewer loaded for ' + window.location.search);",
@@ -276,6 +279,61 @@ public class WebViewVNCManager {
         Log.d(TAG, "VNC disconnected");
         if (statusCallback != null) {
             uiHandler.post(() -> statusCallback.onVncDisconnected());
+        }
+    }
+
+    /**
+     * Open external VNC viewer app (called from JavaScript)
+     */
+    public void openExternalVNC(String host, String portStr, String password) {
+        try {
+            int port = Integer.parseInt(portStr);
+
+            uiHandler.post(() -> {
+                if (activity != null) {
+                    openExternalVNCApp(activity, host, port, password);
+                }
+            });
+        } catch (NumberFormatException e) {
+            Log.e(TAG, "Invalid port number: " + portStr);
+        }
+    }
+
+    /**
+     * Helper method to open external VNC app
+     */
+    private void openExternalVNCApp(Activity activity, String host, int port, String password) {
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+
+            // Try different VNC URL formats that various apps support
+            String vncUrl = String.format("vnc://%s:%d", host, port);
+            if (password != null && !password.isEmpty()) {
+                vncUrl += "?password=" + password;
+            }
+
+            intent.setData(Uri.parse(vncUrl));
+
+            // Try to start the activity
+            activity.startActivity(intent);
+            Log.d(TAG, "Opened external VNC app with URL: " + vncUrl);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to open external VNC app", e);
+
+            // Fallback: show a message to user
+            uiHandler.post(() -> {
+                if (statusCallback != null) {
+                    statusCallback.onVncConnectionFailed(
+                        "Could not open external VNC app.\n\n" +
+                        "Please install a VNC viewer like:\n" +
+                        "• RealVNC Viewer\n" +
+                        "• bVNC Free\n" +
+                        "• PocketVNC\n\n" +
+                        "Then try connecting again."
+                    );
+                }
+            });
         }
     }
 }
