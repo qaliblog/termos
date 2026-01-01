@@ -19,22 +19,22 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
-import com.iiordanov.bVNC.RemoteCanvas;
+import android.webkit.WebView;
 import com.termos.R;
 import com.termos.app.TermuxActivity;
-import com.termos.app.vnc.VNCConnectionManager;
+import com.termos.app.vnc.WebViewVNCManager;
 
 /**
  * Fragment for the OS tab.
- * Embeds bVNC viewer to display Linux desktop environment via VNC.
+ * Embeds WebView-based VNC viewer to display Linux desktop environment.
  */
-public class OstabFragment extends Fragment {
+public class OstabFragment extends Fragment implements WebViewVNCManager.VNCStatusCallback {
 
     private static final String TAG = "OstabFragment";
 
     private Activity activity;
-    private RemoteCanvas vncCanvas;
-    private VNCConnectionManager vncManager;
+    private WebView vncWebView;
+    private WebViewVNCManager vncManager;
     private ScrollView connectionForm;
     private LinearLayout statusOverlay;
     private TextView statusTitle;
@@ -64,7 +64,7 @@ public class OstabFragment extends Fragment {
         View root = inflater.inflate(R.layout.fragment_os_tab, container, false);
 
         // Initialize UI elements
-        vncCanvas = root.findViewById(R.id.vnc_canvas);
+        vncWebView = root.findViewById(R.id.vnc_webview);
         vncContainer = root.findViewById(R.id.vnc_container);
         connectionForm = root.findViewById(R.id.vnc_connection_form);
         statusOverlay = root.findViewById(R.id.vnc_status_overlay);
@@ -76,7 +76,8 @@ public class OstabFragment extends Fragment {
         // Set up connection form
         setupConnectionForm(root);
 
-        vncManager = VNCConnectionManager.getInstance(activity);
+        // Initialize WebView-based VNC manager
+        vncManager = new WebViewVNCManager(activity, activity);
         vncManager.setStatusCallback(this);
         uiHandler = new Handler(Looper.getMainLooper());
 
@@ -92,15 +93,19 @@ public class OstabFragment extends Fragment {
         super.onResume();
 
         // Initialize VNC manager when fragment becomes visible
-        if (vncManager != null && vncCanvas != null && activity != null) {
+        if (vncManager != null && vncWebView != null && activity != null) {
             try {
-                vncManager.initialize(vncCanvas, activity);
+                // Initialize WebView for VNC
+                vncManager.initialize(vncWebView);
 
                 // Set service client for command execution
                 TermuxActivity termuxActivity = (TermuxActivity) activity;
                 if (termuxActivity.getTermuxService() != null) {
                     vncManager.setServiceClient(termuxActivity.getTermuxService().getTermuxTerminalSessionClient());
                 }
+
+                // Resume WebView
+                vncWebView.onResume();
             } catch (Exception e) {
                 Log.e(TAG, "Failed to initialize VNC connection", e);
                 showErrorStatus("Connection Failed", "Failed to initialize VNC: " + e.getMessage());
@@ -180,7 +185,7 @@ public class OstabFragment extends Fragment {
         Log.d(TAG, "Attempting VNC connection to " + host + ":" + port + " as user: " + (username.isEmpty() ? "(none)" : username));
 
         try {
-            vncManager.connect(host, port, username, password);
+            vncManager.connect(host, port, username.isEmpty() ? null : username, password);
         } catch (Exception e) {
             Log.e(TAG, "Failed to start VNC connection", e);
             showErrorStatus("Connection Failed", "Failed to start connection: " + e.getMessage());
@@ -195,6 +200,11 @@ public class OstabFragment extends Fragment {
         if (vncManager != null) {
             vncManager.pause();
         }
+
+        // Pause WebView
+        if (vncWebView != null) {
+            vncWebView.onPause();
+        }
     }
 
     @Override
@@ -204,6 +214,12 @@ public class OstabFragment extends Fragment {
         // Disconnect VNC when fragment is destroyed
         if (vncManager != null) {
             vncManager.disconnect();
+        }
+
+        // Clean up WebView
+        if (vncWebView != null) {
+            vncWebView.destroy();
+            vncWebView = null;
         }
 
         // Clean up handler
@@ -285,28 +301,43 @@ public class OstabFragment extends Fragment {
     /**
      * Called by VNC manager when connection succeeds
      */
+    @Override
     public void onVncConnected() {
         isVncConnected = true;
         uiHandler.post(() -> {
             showVncCanvas();
-            Log.d(TAG, "VNC connection successful - showing canvas");
+            Log.d(TAG, "VNC connection successful - showing WebView");
         });
     }
 
     /**
      * Called by VNC manager when connection fails
      */
+    @Override
     public void onVncConnectionFailed(String error) {
         uiHandler.post(() -> {
             showErrorStatus("Connection Failed",
                 "Unable to connect to VNC server.\n\n" +
-                "If using a proprietary VNC server, try switching to:\n" +
-                "• TightVNC - Most compatible with Termos\n" +
-                "• TigerVNC - Modern and reliable\n" +
-                "• RealVNC Server (free) - Official implementation\n\n" +
-                "Standard servers work perfectly with Termos!\n\n" +
+                "Error: " + error + "\n\n" +
+                "Make sure:\n" +
+                "• VNC server is running on the specified host/port\n" +
+                "• Password is correct\n" +
+                "• Network connectivity is available\n\n" +
+                "For local connections, use 127.0.0.1 and port 5901.\n\n" +
                 "Tap Cancel to return to connection form.");
             Log.e(TAG, "VNC connection failed: " + error);
+        });
+    }
+
+    /**
+     * Called by VNC manager when disconnected
+     */
+    @Override
+    public void onVncDisconnected() {
+        isVncConnected = false;
+        uiHandler.post(() -> {
+            showConnectionForm();
+            Log.d(TAG, "VNC disconnected");
         });
     }
 }

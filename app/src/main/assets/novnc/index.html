@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Termos VNC Viewer</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: #1976d2;
+            color: white;
+            padding: 15px;
+            text-align: center;
+        }
+        .status {
+            padding: 10px;
+            text-align: center;
+            background: #e3f2fd;
+            border-bottom: 1px solid #bbdefb;
+        }
+        .connecting {
+            background: #fff3e0;
+            border-bottom: 1px solid #ffcc02;
+        }
+        .connected {
+            background: #e8f5e8;
+            border-bottom: 1px solid #4caf50;
+        }
+        .error {
+            background: #ffebee;
+            border-bottom: 1px solid #f44336;
+            color: #c62828;
+        }
+        .vnc-container {
+            position: relative;
+            width: 100%;
+            height: 600px;
+            background: #000;
+        }
+        .vnc-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            border: none;
+        }
+        .controls {
+            padding: 10px;
+            background: #f5f5f5;
+            border-top: 1px solid #ddd;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-primary {
+            background: #1976d2;
+            color: white;
+        }
+        .btn-secondary {
+            background: #757575;
+            color: white;
+        }
+        .hidden {
+            display: none;
+        }
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            flex-direction: column;
+            color: #666;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #1976d2;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Termos VNC Desktop</h2>
+        </div>
+
+        <div id="status" class="status connecting">
+            <div id="status-text">Initializing VNC connection...</div>
+        </div>
+
+        <div class="vnc-container">
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <div>Connecting to VNC server...</div>
+            </div>
+            <canvas id="vnc-canvas" class="vnc-canvas hidden"></canvas>
+            <iframe id="vnc-iframe" class="vnc-canvas hidden" allowfullscreen></iframe>
+        </div>
+
+        <div class="controls">
+            <button id="reconnect-btn" class="btn-primary">Reconnect</button>
+            <button id="disconnect-btn" class="btn-secondary">Disconnect</button>
+        </div>
+    </div>
+
+    <script>
+        class TermosVNCViewer {
+            constructor() {
+                this.canvas = document.getElementById('vnc-canvas');
+                this.iframe = document.getElementById('vnc-iframe');
+                this.status = document.getElementById('status');
+                this.statusText = document.getElementById('status-text');
+                this.loading = document.getElementById('loading');
+
+                // Get connection parameters from URL
+                this.params = new URLSearchParams(window.location.search);
+                this.host = this.params.get('host') || '127.0.0.1';
+                this.port = parseInt(this.params.get('port')) || 5901;
+                this.password = this.params.get('password') || '';
+
+                this.init();
+            }
+
+            init() {
+                this.updateStatus('Connecting to VNC server...', 'connecting');
+
+                // For Android WebView, direct VNC connections are limited
+                // We'll try a simple approach using an iframe with VNC URL scheme
+                // This may prompt the user to open an external app, but that's better than nothing
+                this.tryDirectVNCConnection();
+
+                // Setup event listeners
+                document.getElementById('reconnect-btn').addEventListener('click', () => {
+                    this.reconnect();
+                });
+
+                document.getElementById('disconnect-btn').addEventListener('click', () => {
+                    this.disconnect();
+                });
+            }
+
+            updateStatus(message, type = 'connecting') {
+                this.status.className = `status ${type}`;
+                this.statusText.textContent = message;
+            }
+
+            showCanvas() {
+                this.loading.classList.add('hidden');
+                if (this.ws) {
+                    this.canvas.classList.remove('hidden');
+                } else {
+                    this.iframe.classList.remove('hidden');
+                }
+            }
+
+            hideCanvas() {
+                this.loading.classList.remove('hidden');
+                this.canvas.classList.add('hidden');
+                this.iframe.classList.add('hidden');
+            }
+
+            tryDirectVNCConnection() {
+                // Check server availability by trying to connect
+                this.checkServerAvailability();
+            }
+
+            async checkServerAvailability() {
+                this.updateStatus('Checking VNC server...', 'connecting');
+
+                try {
+                    // Try to connect to the VNC port using a simple TCP check
+                    // This won't work in WebView due to CORS, but we can at least show the attempt
+                    const response = await fetch(`http://${this.host}:${this.port}/`, {
+                        method: 'HEAD',
+                        mode: 'no-cors',
+                        cache: 'no-cache',
+                        signal: AbortSignal.timeout(5000)
+                    });
+
+                    this.updateStatus('Server responded! Attempting VNC connection...', 'connecting');
+                    this.attemptVNCConnection();
+
+                } catch (error) {
+                    console.log('Server check failed:', error);
+                    // Server check failed, but that doesn't mean VNC isn't running
+                    // VNC uses RFB protocol, not HTTP
+                    this.attemptVNCConnection();
+                }
+            }
+
+            attemptVNCConnection() {
+                this.updateStatus('Attempting VNC connection...', 'connecting');
+
+                // Since WebView can't directly handle VNC protocol, we'll provide guidance
+                // and try to open external apps
+
+                setTimeout(() => {
+                    // Create a VNC URL that external apps can handle
+                    const vncUrl = `vnc://${this.host}:${this.port}`;
+                    const fullUrl = this.password ?
+                        `${vncUrl}?password=${encodeURIComponent(this.password)}` : vncUrl;
+
+                    // Try to open external VNC app
+                    window.location.href = fullUrl;
+
+                    // Show status while waiting
+                    setTimeout(() => {
+                        this.updateStatus(
+                            'Opening VNC connection in external app...\n\n' +
+                            'If no app opens, make sure you have a VNC viewer installed:\n' +
+                            '• RealVNC Viewer\n' +
+                            '• bVNC Free\n' +
+                            '• PocketVNC\n\n' +
+                            'Connection details:\n' +
+                            `Host: ${this.host}\n` +
+                            `Port: ${this.port}\n` +
+                            `Password: ${this.password ? '***' : '(none)'}`,
+                            'connected'
+                        );
+                    }, 1500);
+                }, 1000);
+            }
+
+            drawFrame(frameData) {
+                // Simple frame drawing for WebSocket mode
+                const ctx = this.canvas.getContext('2d');
+                const imageData = new ImageData(new Uint8ClampedArray(frameData), frameData.width, frameData.height);
+                ctx.putImageData(imageData, 0, 0);
+            }
+
+            reconnect() {
+                this.disconnect();
+                this.hideCanvas();
+                this.updateStatus('Reconnecting...', 'connecting');
+                setTimeout(() => {
+                    if (this.useWebSocket) {
+                        this.tryWebSocketConnection();
+                    } else {
+                        this.tryIframeConnection();
+                    }
+                }, 1000);
+            }
+
+            disconnect() {
+                if (this.ws) {
+                    this.ws.close();
+                    this.ws = null;
+                }
+                this.iframe.src = 'about:blank';
+                this.updateStatus('Disconnected', 'error');
+                this.hideCanvas();
+            }
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new TermosVNCViewer();
+        });
+    </script>
+</body>
+</html>

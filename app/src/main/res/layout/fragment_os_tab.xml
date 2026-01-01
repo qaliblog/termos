@@ -5,19 +5,17 @@
     android:layout_height="match_parent"
     android:background="@android:color/black">
 
-    <!-- VNC Viewer Container (holds both bVNC and simple viewer) -->
+    <!-- VNC Viewer Container (WebView-based) -->
     <FrameLayout
         android:id="@+id/vnc_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:visibility="gone">
 
-        <com.iiordanov.bVNC.RemoteCanvas
-            android:id="@+id/vnc_canvas"
+        <WebView
+            android:id="@+id/vnc_webview"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+            android:layout_height="match_parent" />
 
     </FrameLayout>
 
