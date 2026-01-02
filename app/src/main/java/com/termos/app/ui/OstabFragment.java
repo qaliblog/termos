@@ -19,22 +19,22 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
-import android.webkit.WebView;
 import com.termos.R;
 import com.termos.app.TermuxActivity;
-import com.termos.app.vnc.WebViewVNCManager;
+import com.termos.app.vnc.VNCConnectionManager;
+import com.iiordanov.bVNC.RemoteCanvas;
 
 /**
  * Fragment for the OS tab.
- * Embeds WebView-based VNC viewer to display Linux desktop environment.
+ * Uses bVNC library for internal VNC connections to display Linux desktop environment.
  */
-public class OstabFragment extends Fragment implements WebViewVNCManager.VNCStatusCallback {
+public class OstabFragment extends Fragment {
 
     private static final String TAG = "OstabFragment";
 
     private Activity activity;
-    private WebView vncWebView;
-    private WebViewVNCManager vncManager;
+    private VNCConnectionManager vncManager;
+    private RemoteCanvas vncCanvas;
     private ScrollView connectionForm;
     private LinearLayout statusOverlay;
     private TextView statusTitle;
@@ -44,7 +44,7 @@ public class OstabFragment extends Fragment implements WebViewVNCManager.VNCStat
     private Handler uiHandler;
     private boolean isVncConnected = false;
 
-    // Simple VNC viewer container
+    // VNC canvas container
     private android.widget.FrameLayout vncContainer;
 
 
@@ -64,7 +64,7 @@ public class OstabFragment extends Fragment implements WebViewVNCManager.VNCStat
         View root = inflater.inflate(R.layout.fragment_os_tab, container, false);
 
         // Initialize UI elements
-        vncWebView = root.findViewById(R.id.vnc_webview);
+        vncCanvas = root.findViewById(R.id.vnc_canvas);
         vncContainer = root.findViewById(R.id.vnc_container);
         connectionForm = root.findViewById(R.id.vnc_connection_form);
         statusOverlay = root.findViewById(R.id.vnc_status_overlay);
@@ -76,8 +76,8 @@ public class OstabFragment extends Fragment implements WebViewVNCManager.VNCStat
         // Set up connection form
         setupConnectionForm(root);
 
-        // Initialize WebView-based VNC manager
-        vncManager = new WebViewVNCManager(activity, activity);
+        // Initialize bVNC-based VNC manager
+        vncManager = VNCConnectionManager.getInstance(activity);
         vncManager.setStatusCallback(this);
         uiHandler = new Handler(Looper.getMainLooper());
 
@@ -93,19 +93,16 @@ public class OstabFragment extends Fragment implements WebViewVNCManager.VNCStat
         super.onResume();
 
         // Initialize VNC manager when fragment becomes visible
-        if (vncManager != null && vncWebView != null && activity != null) {
+        if (vncManager != null && vncCanvas != null && activity != null) {
             try {
-                // Initialize WebView for VNC
-                vncManager.initialize(vncWebView);
+                // Initialize RemoteCanvas for VNC
+                vncManager.initialize(vncCanvas, activity);
 
                 // Set service client for command execution
                 TermuxActivity termuxActivity = (TermuxActivity) activity;
                 if (termuxActivity.getTermuxService() != null) {
                     vncManager.setServiceClient(termuxActivity.getTermuxService().getTermuxTerminalSessionClient());
                 }
-
-                // Resume WebView
-                vncWebView.onResume();
             } catch (Exception e) {
                 Log.e(TAG, "Failed to initialize VNC connection", e);
                 showErrorStatus("Connection Failed", "Failed to initialize VNC: " + e.getMessage());
@@ -200,11 +197,6 @@ public class OstabFragment extends Fragment implements WebViewVNCManager.VNCStat
         if (vncManager != null) {
             vncManager.pause();
         }
-
-        // Pause WebView
-        if (vncWebView != null) {
-            vncWebView.onPause();
-        }
     }
 
     @Override
@@ -216,10 +208,9 @@ public class OstabFragment extends Fragment implements WebViewVNCManager.VNCStat
             vncManager.disconnect();
         }
 
-        // Clean up WebView
-        if (vncWebView != null) {
-            vncWebView.destroy();
-            vncWebView = null;
+        // Clean up RemoteCanvas
+        if (vncCanvas != null) {
+            vncCanvas = null;
         }
 
         // Clean up handler
@@ -306,7 +297,7 @@ public class OstabFragment extends Fragment implements WebViewVNCManager.VNCStat
         isVncConnected = true;
         uiHandler.post(() -> {
             showVncCanvas();
-            Log.d(TAG, "VNC connection successful - showing WebView");
+            Log.d(TAG, "VNC connection successful - showing RemoteCanvas");
         });
     }
 

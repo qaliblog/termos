@@ -5,15 +5,15 @@
     android:layout_height="match_parent"
     android:background="@android:color/black">
 
-    <!-- VNC Viewer Container (WebView-based) -->
+    <!-- VNC Viewer Container (bVNC-based) -->
     <FrameLayout
         android:id="@+id/vnc_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:visibility="gone">
 
-        <WebView
-            android:id="@+id/vnc_webview"
+        <com.iiordanov.bVNC.RemoteCanvas
+            android:id="@+id/vnc_canvas"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
 
