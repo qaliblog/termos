@@ -2,8 +2,6 @@ package com.termos.app.ui;
 
 import android.app.Activity;
 import android.os.Bundle;
-import android.app.Activity;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -22,13 +20,14 @@ import androidx.fragment.app.Fragment;
 import com.termos.R;
 import com.termos.app.TermuxActivity;
 import com.termos.app.vnc.VNCConnectionManager;
+import com.termos.app.vnc.WebViewVNCManager;
 import com.iiordanov.bVNC.RemoteCanvas;
 
 /**
  * Fragment for the OS tab.
  * Uses bVNC library for internal VNC connections to display Linux desktop environment.
  */
-public class OstabFragment extends Fragment {
+public class OstabFragment extends Fragment implements WebViewVNCManager.VNCStatusCallback {
 
     private static final String TAG = "OstabFragment";
 

@@ -243,13 +243,13 @@ public class VNCConnectionManager {
     }
 
     /**
-     * Set the fragment to notify about connection status changes
+     * Set the callback to notify about connection status changes
      */
-    public void setStatusCallback(OstabFragment fragment) {
-        this.statusCallbackFragment = fragment;
+    public void setStatusCallback(WebViewVNCManager.VNCStatusCallback callback) {
+        this.statusCallback = callback;
     }
 
-    private OstabFragment statusCallbackFragment;
+    private WebViewVNCManager.VNCStatusCallback statusCallback;
 
     /**
      * Check for common VNC startup issues and report them
@@ -305,8 +305,8 @@ public class VNCConnectionManager {
                 } else {
                     Log.w(TAG, "Max retries reached, stopping continuous retry");
                     // Provide user feedback about the failure
-                    if (statusCallbackFragment != null) {
-                        statusCallbackFragment.onVncConnectionFailed(
+                    if (statusCallback != null) {
+                        statusCallback.onVncConnectionFailed(
                             "Unable to connect to VNC server after " + MAX_CONNECTION_RETRIES + " attempts. " +
                             "Check that the OS is properly installed and try restarting the app."
                         );
@@ -378,7 +378,7 @@ public class VNCConnectionManager {
         } else {
             // All bVNC connection types tried, offer external VNC viewers
             Log.d(TAG, "All bVNC connection types failed, offering external VNC viewers");
-            if (statusCallbackFragment != null) {
+            if (statusCallback != null) {
                 offerExternalVNCViewer();
             }
         }
@@ -789,8 +789,8 @@ public class VNCConnectionManager {
         // Check if connection is ready
         if (!connection.isReadyForConnection()) {
             Log.e(TAG, "Connection not ready: missing required parameters");
-            if (statusCallbackFragment != null) {
-                statusCallbackFragment.onVncConnectionFailed("Connection not ready: missing required parameters (host, port, password)");
+            if (statusCallback != null) {
+                statusCallback.onVncConnectionFailed("Connection not ready: missing required parameters (host, port, password)");
             }
             return;
         }
@@ -798,8 +798,8 @@ public class VNCConnectionManager {
         // Check if handler is available
         if (handler == null) {
             Log.e(TAG, "Handler not available, cannot connect");
-            if (statusCallbackFragment != null) {
-                statusCallbackFragment.onVncConnectionFailed("VNC handler not initialized");
+            if (statusCallback != null) {
+                statusCallback.onVncConnectionFailed("VNC handler not initialized");
             }
             return;
         }
@@ -843,9 +843,9 @@ public class VNCConnectionManager {
 
         // Final check - if still not connected, consider it failed
         uiHandler.postDelayed(() -> {
-            if (!isConnected && statusCallbackFragment != null) {
+            if (!isConnected && statusCallback != null) {
                 Log.d(TAG, "Connection monitoring timeout - considering connection failed");
-                statusCallbackFragment.onVncConnectionFailed("Unable to establish VNC connection. The VNC server may not be running or may require different authentication.");
+                statusCallback.onVncConnectionFailed("Unable to establish VNC connection. The VNC server may not be running or may require different authentication.");
             }
         }, 16000); // 16 seconds total timeout
     }
@@ -867,11 +867,11 @@ public class VNCConnectionManager {
                 if (connectionEstablished) {
                     // Connection successful
                     isConnected = true;
-                    if (statusCallbackFragment != null) {
-                        statusCallbackFragment.onVncConnected();
+                    if (statusCallback != null) {
+                        statusCallback.onVncConnected();
                     }
                     Log.d(TAG, "Connection successful - VNC handshake completed");
-                } else if (statusCallbackFragment != null) {
+                } else if (statusCallback != null) {
                     // Check if any dialogs are still showing
                     boolean hasDialog = (customProgressDialog != null && customProgressDialog.isShowing()) ||
                                       (remoteConnection != null && remoteConnection.pd != null && remoteConnection.pd.isShowing());
