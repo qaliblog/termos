@@ -296,7 +296,7 @@ def downloadBootstrap(String arch, String expectedChecksum, String version) {
     def remoteUrl = "https://github.com/termux/termux-packages/releases/download/bootstrap-" + version + "/bootstrap-" + arch + ".zip"
     logger.quiet("Downloading " + remoteUrl + " ...")
 
-    def file.parentFile.mkdirs()
+    file.parentFile.mkdirs()
     def out = new BufferedOutputStream(new FileOutputStream(file))
 
     def connection = new URL(remoteUrl).openConnection()
