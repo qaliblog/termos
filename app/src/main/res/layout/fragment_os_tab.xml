@@ -5,15 +5,15 @@
     android:layout_height="match_parent"
     android:background="@android:color/black">
 
-    <!-- VNC Viewer Container (bVNC-based) -->
+    <!-- VNC Viewer Container (AVNC-based) -->
     <FrameLayout
         android:id="@+id/vnc_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:visibility="gone">
 
-        <com.iiordanov.bVNC.RemoteCanvas
-            android:id="@+id/vnc_canvas"
+        <com.termos.app.ui.vnc.FrameView
+            android:id="@+id/vnc_frame_view"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
 

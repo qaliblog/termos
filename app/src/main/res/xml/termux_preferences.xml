@@ -19,6 +19,6 @@
         app:key="vnc"
         app:title="VNC Settings"
         app:summary="Configure VNC connection and input settings"
-        app:fragment="com.termos.app.fragments.settings.VNCPreferencesFragment"/>
+        app:fragment="com.termos.app.ui.prefs.VNCPreferencesFragment"/>
 
 </PreferenceScreen>

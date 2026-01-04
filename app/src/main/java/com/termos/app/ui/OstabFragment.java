@@ -13,27 +13,32 @@ import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import java.lang.ref.WeakReference;
+
+import android.opengl.GLSurfaceView;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.termos.R;
 import com.termos.app.TermuxActivity;
-import com.termos.app.vnc.VNCConnectionManager;
-import com.termos.app.vnc.WebViewVNCManager;
-import com.iiordanov.bVNC.RemoteCanvas;
+import com.termos.app.model.ServerProfile;
+import com.termos.app.ui.vnc.FrameView;
+import com.termos.app.viewmodel.VncViewModel;
 
 /**
  * Fragment for the OS tab.
- * Uses bVNC library for internal VNC connections to display Linux desktop environment.
+ * Uses AVNC library for internal VNC connections to display Linux desktop environment.
  */
-public class OstabFragment extends Fragment implements WebViewVNCManager.VNCStatusCallback {
+public class OstabFragment extends Fragment {
 
     private static final String TAG = "OstabFragment";
 
     private Activity activity;
-    private VNCConnectionManager vncManager;
-    private RemoteCanvas vncCanvas;
+    private VncViewModel vncViewModel;
+    private FrameView vncFrameView;
     private ScrollView connectionForm;
     private LinearLayout statusOverlay;
     private TextView statusTitle;
@@ -63,7 +68,7 @@ public class OstabFragment extends Fragment implements WebViewVNCManager.VNCStat
         View root = inflater.inflate(R.layout.fragment_os_tab, container, false);
 
         // Initialize UI elements
-        vncCanvas = root.findViewById(R.id.vnc_canvas);
+        vncFrameView = root.findViewById(R.id.vnc_frame_view);
         vncContainer = root.findViewById(R.id.vnc_container);
         connectionForm = root.findViewById(R.id.vnc_connection_form);
         statusOverlay = root.findViewById(R.id.vnc_status_overlay);
@@ -75,10 +80,12 @@ public class OstabFragment extends Fragment implements WebViewVNCManager.VNCStat
         // Set up connection form
         setupConnectionForm(root);
 
-        // Initialize bVNC-based VNC manager
-        vncManager = VNCConnectionManager.getInstance(activity);
-        vncManager.setStatusCallback(this);
+        // Initialize AVNC ViewModel
+        vncViewModel = new ViewModelProvider(this).get(VncViewModel.class);
         uiHandler = new Handler(Looper.getMainLooper());
+
+        // Observe VNC connection state
+        observeVncState();
 
         // Start with connection form visible
         showConnectionForm();
@@ -86,21 +93,61 @@ public class OstabFragment extends Fragment implements WebViewVNCManager.VNCStat
         return root;
     }
 
+    /**
+     * Observe VNC connection state changes
+     */
+    private void observeVncState() {
+        if (vncViewModel != null) {
+            vncViewModel.getState().observe(getViewLifecycleOwner(), state -> {
+                if (state.isConnected()) {
+                    isVncConnected = true;
+                    showVncCanvas();
+                    Log.d(TAG, "VNC connection successful - showing FrameView");
+                } else if (state.isDisconnected()) {
+                    isVncConnected = false;
+                    showConnectionForm();
+                    Log.d(TAG, "VNC disconnected");
+                } else {
+                    // Handle other states (connecting, error, etc.)
+                    showStatusOverlay("Connecting", "Connecting to VNC server...", "");
+                }
+            });
+
+            vncViewModel.getConnectionError().observe(getViewLifecycleOwner(), error -> {
+                if (error != null) {
+                    showErrorStatus("Connection Failed", "Unable to connect to VNC server.\n\nError: " + error);
+                    Log.e(TAG, "VNC connection failed: " + error);
+                }
+            });
+        }
+    }
 
     @Override
     public void onResume() {
         super.onResume();
 
-        // Initialize VNC manager when fragment becomes visible
-        if (vncManager != null && vncCanvas != null && activity != null) {
+        // Resume FrameView when fragment becomes visible
+        if (vncFrameView != null) {
+            vncFrameView.onResume();
+        }
+
+        // Initialize VNC ViewModel when fragment becomes visible
+        if (vncViewModel != null && vncFrameView != null && activity != null) {
             try {
-                // Initialize RemoteCanvas for VNC
-                vncManager.initialize(vncCanvas, activity);
+                // Set up FrameView for VNC display - basic setup without VncActivity dependencies
+                if (!vncFrameView.getRenderer().equals(null)) {
+                    // Renderer not set yet, set it up
+                    vncFrameView.setEGLContextClientVersion(2);
+                    // Note: Renderer will be set by VncViewModel when connection starts
+                    vncFrameView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
+                }
+                vncViewModel.frameViewRef = new WeakReference<>(vncFrameView);
 
                 // Set service client for command execution
                 TermuxActivity termuxActivity = (TermuxActivity) activity;
                 if (termuxActivity.getTermuxService() != null) {
-                    vncManager.setServiceClient(termuxActivity.getTermuxService().getTermuxTerminalSessionClient());
+                    // Note: AVNC doesn't use the same service client pattern as BVNC
+                    // We may need to adapt this for command execution
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Failed to initialize VNC connection", e);
@@ -160,8 +207,8 @@ public class OstabFragment extends Fragment implements WebViewVNCManager.VNCStat
 
         cancelButton.setOnClickListener(v -> {
             // Cancel connection and return to form
-            if (vncManager != null) {
-                vncManager.disconnect();
+            if (vncViewModel != null) {
+                vncViewModel.disconnect();
             }
             showConnectionForm();
         });
@@ -176,12 +223,21 @@ public class OstabFragment extends Fragment implements WebViewVNCManager.VNCStat
             "Host: " + host + "\n" +
             "Port: " + port + "\n" +
             "Username: " + (username.isEmpty() ? "(none)" : username) + "\n" +
-            "Trying different authentication methods automatically", "");
+            "Using AVNC for connection", "");
 
         Log.d(TAG, "Attempting VNC connection to " + host + ":" + port + " as user: " + (username.isEmpty() ? "(none)" : username));
 
         try {
-            vncManager.connect(host, port, username, password);
+            // Create a ServerProfile for AVNC
+            ServerProfile profile = new ServerProfile();
+            profile.setHost(host);
+            profile.setPort(port);
+            profile.setUsername(username.isEmpty() ? "" : username);
+            profile.setPassword(password);
+            profile.setSecurityType(0); // 0 = enable all supported security types
+
+            // Connect using VncViewModel
+            vncViewModel.initConnection(profile);
         } catch (Exception e) {
             Log.e(TAG, "Failed to start VNC connection", e);
             showErrorStatus("Connection Failed", "Failed to start connection: " + e.getMessage());
@@ -192,9 +248,14 @@ public class OstabFragment extends Fragment implements WebViewVNCManager.VNCStat
     public void onPause() {
         super.onPause();
 
+        // Pause FrameView when fragment becomes hidden
+        if (vncFrameView != null) {
+            vncFrameView.onPause();
+        }
+
         // Pause VNC connection when fragment becomes hidden
-        if (vncManager != null) {
-            vncManager.pause();
+        if (vncViewModel != null) {
+            vncViewModel.pause();
         }
     }
 
@@ -203,13 +264,13 @@ public class OstabFragment extends Fragment implements WebViewVNCManager.VNCStat
         super.onDestroyView();
 
         // Disconnect VNC when fragment is destroyed
-        if (vncManager != null) {
-            vncManager.disconnect();
+        if (vncViewModel != null) {
+            vncViewModel.disconnect();
         }
 
-        // Clean up RemoteCanvas
-        if (vncCanvas != null) {
-            vncCanvas = null;
+        // Clean up FrameView
+        if (vncFrameView != null) {
+            vncFrameView = null;
         }
 
         // Clean up handler
@@ -288,46 +349,4 @@ public class OstabFragment extends Fragment implements WebViewVNCManager.VNCStat
         });
     }
 
-    /**
-     * Called by VNC manager when connection succeeds
-     */
-    @Override
-    public void onVncConnected() {
-        isVncConnected = true;
-        uiHandler.post(() -> {
-            showVncCanvas();
-            Log.d(TAG, "VNC connection successful - showing RemoteCanvas");
-        });
-    }
-
-    /**
-     * Called by VNC manager when connection fails
-     */
-    @Override
-    public void onVncConnectionFailed(String error) {
-        uiHandler.post(() -> {
-            showErrorStatus("Connection Failed",
-                "Unable to connect to VNC server.\n\n" +
-                "Error: " + error + "\n\n" +
-                "Make sure:\n" +
-                "• VNC server is running on the specified host/port\n" +
-                "• Password is correct\n" +
-                "• Network connectivity is available\n\n" +
-                "For local connections, use 127.0.0.1 and port 5901.\n\n" +
-                "Tap Cancel to return to connection form.");
-            Log.e(TAG, "VNC connection failed: " + error);
-        });
-    }
-
-    /**
-     * Called by VNC manager when disconnected
-     */
-    @Override
-    public void onVncDisconnected() {
-        isVncConnected = false;
-        uiHandler.post(() -> {
-            showConnectionForm();
-            Log.d(TAG, "VNC disconnected");
-        });
-    }
 }

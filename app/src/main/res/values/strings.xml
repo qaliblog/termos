@@ -271,4 +271,17 @@
         <item>mouse</item>
     </string-array>
 
+    <!-- AVNC Preference Strings -->
+    <string name="title_settings">Settings</string>
+    <string name="pref_ui">Appearance</string>
+    <string name="pref_ui_summary">Theme, toolbar and gesture settings</string>
+    <string name="pref_viewer">Viewer</string>
+    <string name="pref_viewer_summary">Display and performance settings</string>
+    <string name="pref_input">Input</string>
+    <string name="pref_input_summary">Keyboard, mouse and gesture settings</string>
+    <string name="pref_servers">Server</string>
+    <string name="pref_server_summary">Connection and security settings</string>
+    <string name="pref_tools">Tools</string>
+    <string name="pref_tools_summary">Import/export and debugging tools</string>
+
 </resources>

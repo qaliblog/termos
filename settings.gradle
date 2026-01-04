@@ -1,8 +1,5 @@
 include ':app', ':termux-shared', ':terminal-emulator', ':terminal-view'
 
-// Include remote-desktop-clients modules for VNC support
-// These modules are now copied into the termos folder
-include ':remoteClientLib', ':common', ':bVNC', ':pubkeyGenerator'
 
 // Conditionally include freeRDPCore if it exists (needs to be built first via build-deps.sh)
 def freeRDPCorePath = file('remoteClientLib/jni/libs/deps/FreeRDP/client/Android/Studio/freeRDPCore')
