@@ -8,14 +8,14 @@ buildscript {
     }
     dependencies {
         classpath "com.android.tools.build:gradle:8.1.0"
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.22"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:2.2.10"
     }
 }
 
 ext {
     compileApi = project.properties.compileSdkVersion?.toInteger() ?: 31
     targetApi = project.properties.targetSdkVersion?.toInteger() ?: 28
-    kotlin_version = '1.9.22'
+    kotlin_version = '2.2.10'
 }
 
 allprojects {
