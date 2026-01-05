@@ -63,9 +63,6 @@ android {
         manifestPlaceholders.TERMUX_WIDGET_APP_NAME = "Termux:Widget"
 
         externalNativeBuild {
-            ndkBuild {
-                cFlags "-std=c11", "-Wall", "-Wextra", "-Werror", "-Os", "-fno-stack-protector", "-Wl,--gc-sections"
-            }
             cmake {
                 //We are not using STL
                 arguments '-DANDROID_STL=none'
@@ -150,9 +147,6 @@ android {
     }
 
     externalNativeBuild {
-        ndkBuild {
-            path "src/main/cpp/Android.mk"
-        }
         cmake {
             version '3.22.1'
             path file('CMakeLists.txt')
