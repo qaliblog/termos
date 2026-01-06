@@ -26,6 +26,8 @@ allprojects {
         maven { url "https://repo1.maven.org/maven2" }
         maven { url "https://jitpack.io" }
         maven { url "https://plugins.gradle.org/m2/" }
+        maven { url "https://repository.jboss.org/nexus/content/repositories/thirdparty-releases" }
+        maven { url "https://repo.spring.io/plugins-release" }
         // jcenter() removed - deprecated
     }
     
@@ -37,6 +39,7 @@ allprojects {
             force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.22'
             force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.22'
             force 'org.jetbrains.kotlin:kotlin-stdlib:1.9.22'
+            force 'commons-codec:commons-codec:1.15'
 
             // Exclude support library dependencies that conflict with AndroidX
             exclude group: 'com.android.support', module: 'support-compat'

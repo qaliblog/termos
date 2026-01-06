@@ -22,10 +22,8 @@ android {
         // noinspection GradleDependency
         implementation "androidx.window:window:1.0.0-alpha09"
 
-        // Do not increment version higher than 2.5 or there
-        // will be runtime exceptions on android < 8
-        // due to missing classes like java.nio.file.Path.
-        implementation "commons-io:commons-io:2.5"
+        // Updated to newer version while staying compatible with Android < 8
+        implementation "commons-io:commons-io:2.6"
 
         implementation project(":terminal-view")
 
