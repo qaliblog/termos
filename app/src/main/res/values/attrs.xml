@@ -2,4 +2,12 @@
 <resources>
     <attr name="termuxActivityDrawerBackground" format="reference" />
     <attr name="termuxActivityDrawerImageTint" format="reference" />
+
+    <declare-styleable name="ListPreferenceEx">
+        <!--
+            Message shown in a dialog, when help button of the preference is clicked.
+            This will only work if @layout/help_btn is used as widgetLayout.
+        -->
+        <attr name="helpMessage" format="string|reference" />
+    </declare-styleable>
 </resources>

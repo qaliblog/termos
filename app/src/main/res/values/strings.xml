@@ -284,4 +284,69 @@
     <string name="pref_tools">Tools</string>
     <string name="pref_tools_summary">Import/export and debugging tools</string>
 
+    <!-- Additional AVNC strings needed for preferences -->
+    <string name="pref_theme">Theme</string>
+    <string name="pref_theme_option_system">System</string>
+    <string name="pref_theme_option_dark">Dark</string>
+    <string name="pref_theme_option_light">Light</string>
+    <string name="pref_bell">Bell</string>
+    <string name="pref_prefer_advanced_editor">Directly open advanced server options</string>
+    <string name="pref_sort_server_list">Sort saved servers by name</string>
+    <string name="pref_gesture">Gestures</string>
+    <string name="pref_gesture_style">Gesture style</string>
+    <string name="pref_gesture_style_touchscreen">Touchscreen</string>
+    <string name="pref_gesture_style_touchpad">Touchpad</string>
+    <string name="pref_double_tap">Double tap</string>
+    <string name="pref_long_press">Long press</string>
+    <string name="pref_two_finger_tap">Two-finger tap</string>
+    <string name="pref_three_finger_tap">Three-finger tap</string>
+    <string name="pref_swipe1">One-finger swipe</string>
+    <string name="pref_swipe2">Two-finger swipe</string>
+    <string name="pref_swipe3">Three-finger swipe</string>
+    <string name="pref_double_tap_swipe">Double tap and swipe</string>
+    <string name="pref_long_press_swipe">Long press and swipe</string>
+    <string name="pref_swipe_sensitivity">Swipe sensitivity</string>
+    <string name="pref_invert_vertical_scrolling">Invert vertical scrolling</string>
+    <string name="pref_mouse">Mouse</string>
+    <string name="pref_mouse_passthrough">Mouse passthrough</string>
+    <string name="pref_mouse_passthrough_summary_off">Mouse events are handled locally</string>
+    <string name="pref_mouse_passthrough_summary_on">Mouse events are sent to server</string>
+    <string name="pref_capture_pointer">Capture pointer</string>
+    <string name="pref_hide_local_cursor">Hide local cursor</string>
+    <string name="title_hide_remote_cursor">Hide remote cursor</string>
+    <string name="pref_mouse_back">Mouse back button</string>
+    <string name="pref_vk">Virtual keyboard</string>
+    <string name="pref_vk_open_with_keyboard">Open with hardware keyboard</string>
+    <string name="pref_vk_use_super_with_single_tap">Use Super with single tap</string>
+    <string name="pref_vk_row_count">Virtual keyboard rows</string>
+    <string name="pref_customize_virtual_keys">Customize virtual keys</string>
+    <string name="pref_km">Key mapping</string>
+    <string name="pref_km_right_alt_to_super">Right Alt to Super</string>
+    <string name="pref_km_language_switch_to_super">Language switch to Super</string>
+    <string name="pref_km_back_to_escape">Back to Escape</string>
+    <string name="pref_km_back_to_escape_summary">Map hardware back button to Escape key</string>
+
+    <!-- Gesture action strings -->
+    <string name="pref_gesture_action_none" translatable="false">@string/title_none</string>
+    <string name="pref_gesture_action_left_click">Left-click</string>
+    <string name="pref_gesture_action_left_press">Long-press</string>
+    <string name="pref_gesture_action_middle_click">Middle-click</string>
+    <string name="pref_gesture_action_right_click">Right-click</string>
+    <string name="pref_gesture_action_double_click">Double-click</string>
+    <string name="pref_gesture_action_move_pointer">Move pointer</string>
+    <string name="pref_gesture_action_pan">Pan local frame</string>
+    <string name="pref_gesture_action_remote_scroll">Scroll remote content</string>
+    <string name="pref_gesture_action_remote_drag">Drag remote content</string>
+    <string name="pref_gesture_action_remote_drag_middle">Drag with middle button</string>
+    <string name="pref_gesture_action_remote_back_press">Back-press on server</string>
+    <string name="pref_gesture_action_open_keyboard">Open keyboard</string>
+    <string name="pref_mouse_back_action_default">Default</string>
+
+    <!-- Help messages -->
+    <string name="msg_gesture_style_help">Touchscreen mode performs actions at the point of touch. Touchpad mode performs actions relative to the current pointer position.</string>
+    <string name="msg_drag_gesture_help">Drag gestures let you move content on the server by dragging your finger on the screen.</string>
+
+    <!-- UI descriptions -->
+    <string name="desc_help_btn">Help</string>
+
 </resources>
