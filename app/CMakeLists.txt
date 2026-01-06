@@ -69,10 +69,8 @@ set(JPEG_INCLUDE_DIR ${CMAKE_BINARY_DIR})
 # Copy jpeglib.h to the binary directory for libvncserver detection
 configure_file(${AVNC_LIBJPEG_SRC_DIR}/src/jpeglib.h ${CMAKE_BINARY_DIR}/jpeglib.h COPYONLY)
 
-# Copy the generated jconfig.h from libjpeg-turbo build to where libvncserver can find it
-configure_file(${AVNC_LIBJPEG_BUILD_DIR}/jconfig.h ${CMAKE_BINARY_DIR}/jconfig.h COPYONLY)
-
 # Make sure libjpeg-turbo headers are available for libvncserver detection
+# Include both source and build directories so libvncserver can find jconfig.h when it's generated
 include_directories(${AVNC_LIBJPEG_SRC_DIR} ${AVNC_LIBJPEG_SRC_DIR}/src ${CMAKE_BINARY_DIR} ${AVNC_LIBJPEG_BUILD_DIR})
 
 # Create an interface library to properly link the external project
