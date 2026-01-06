@@ -163,4 +163,15 @@
         <item>3</item>
     </string-array>
 
+    <string-array name="orientation_entries">
+        <item>@string/pref_orientation_option_auto</item>
+        <item>@string/pref_orientation_option_portrait</item>
+        <item>@string/pref_orientation_option_landscape</item>
+    </string-array>
+    <string-array name="orientation_values">
+        <item>auto</item>
+        <item>portrait</item>
+        <item>landscape</item>
+    </string-array>
+
 </resources>
