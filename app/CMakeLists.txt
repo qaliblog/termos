@@ -61,9 +61,10 @@ ExternalProject_Add(libjpeg-turbo
 
 # Set these variables so FindJPEG can find the library
 set(JPEG_LIBRARY ${AVNC_LIBJPEG_BUILD_DIR}/libturbojpeg.a)
-set(JPEG_INCLUDE_DIR ${AVNC_LIBJPEG_SRC_DIR})
+set(JPEG_INCLUDE_DIR ${AVNC_LIBJPEG_SRC_DIR}/src)
 
-include_directories(${AVNC_LIBJPEG_SRC_DIR})
+# Make sure libjpeg-turbo headers are available for libvncserver detection
+include_directories(${AVNC_LIBJPEG_SRC_DIR} ${AVNC_LIBJPEG_SRC_DIR}/src)
 
 
 ###############################################################################
