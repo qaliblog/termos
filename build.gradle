@@ -12,14 +12,14 @@ buildscript {
     }
     dependencies {
         classpath "com.android.tools.build:gradle:8.1.4"
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.22"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.23"
     }
 }
 
 ext {
     compileApi = project.properties.compileSdkVersion?.toInteger() ?: 31
     targetApi = project.properties.targetSdkVersion?.toInteger() ?: 28
-    kotlin_version = '1.9.22'
+    kotlin_version = '1.9.23'
 }
 
 allprojects {
@@ -41,9 +41,9 @@ allprojects {
             // Force AndroidX versions and exclude support library duplicates
             force 'androidx.core:core:1.7.0'
             force 'androidx.versionedparcelable:versionedparcelable:1.1.1'
-            force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.22'
-            force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.22'
-            force 'org.jetbrains.kotlin:kotlin-stdlib:1.9.22'
+            force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.23'
+            force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.23'
+            force 'org.jetbrains.kotlin:kotlin-stdlib:1.9.23'
             force 'commons-codec:commons-codec:1.15'
 
             // Exclude support library dependencies that conflict with AndroidX
