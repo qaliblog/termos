@@ -55,11 +55,14 @@ ExternalProject_Add(libjpeg-turbo
         -DWITH_JPEG8=ON
         -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
         -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+    BUILD_BYPRODUCTS ${AVNC_LIBJPEG_BUILD_DIR}/libturbojpeg.a
+    BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target turbojpeg-static
+    BUILD_ALWAYS TRUE
     INSTALL_COMMAND ""
 )
 
 # Set these variables so FindJPEG can find the library
-set(JPEG_LIBRARY ${AVNC_LIBJPEG_BUILD_DIR}/libturbojpeg.a)
+set(JPEG_LIBRARY turbojpeg)
 set(JPEG_INCLUDE_DIR ${CMAKE_BINARY_DIR})
 
 # Copy jpeglib.h to the binary directory for libvncserver detection
