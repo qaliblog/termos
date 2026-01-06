@@ -4,7 +4,7 @@ buildscript {
         mavenCentral()
         maven { url "https://maven.google.com" }
         maven { url "https://repo1.maven.org/maven2" }
-        jcenter() // fallback
+        // jcenter() removed - deprecated
     }
     dependencies {
         classpath "com.android.tools.build:gradle:8.1.4"
@@ -21,11 +21,12 @@ ext {
 allprojects {
     repositories {
         google()
-        maven { url "https://maven.google.com" }
         mavenCentral()
+        maven { url "https://maven.google.com" }
         maven { url "https://repo1.maven.org/maven2" }
-        jcenter() // fallback
         maven { url "https://jitpack.io" }
+        maven { url "https://plugins.gradle.org/m2/" }
+        // jcenter() removed - deprecated
     }
     
     configurations.all {
@@ -33,11 +34,14 @@ allprojects {
             // Force AndroidX versions and exclude support library duplicates
             force 'androidx.core:core:1.7.0'
             force 'androidx.versionedparcelable:versionedparcelable:1.1.1'
-            
+            force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.22'
+            force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.22'
+            force 'org.jetbrains.kotlin:kotlin-stdlib:1.9.22'
+
             // Exclude support library dependencies that conflict with AndroidX
             exclude group: 'com.android.support', module: 'support-compat'
             exclude group: 'com.android.support', module: 'versionedparcelable'
-            
+
             // Exclude listenablefuture from guava to avoid duplicate class
             exclude group: 'com.google.guava', module: 'listenablefuture'
         }
