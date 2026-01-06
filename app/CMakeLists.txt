@@ -55,6 +55,7 @@ ExternalProject_Add(libjpeg-turbo
         -DWITH_JPEG8=ON
         -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
         -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+        -DWITH_PKGCONFIG=OFF
     BUILD_BYPRODUCTS ${AVNC_LIBJPEG_BUILD_DIR}/libturbojpeg.a
     BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target turbojpeg-static
     BUILD_ALWAYS TRUE
