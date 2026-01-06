@@ -37,14 +37,41 @@ avnc_check_submodule(libjpeg-turbo)
 set(AVNC_LIBJPEG_SRC_DIR ${AVNC_EXTERN_DIR}/libjpeg-turbo)
 set(AVNC_LIBJPEG_BUILD_DIR ${CMAKE_BINARY_DIR}/libjpeg-turbo)
 
-add_subdirectory(${AVNC_LIBJPEG_SRC_DIR} ${AVNC_LIBJPEG_BUILD_DIR})
+# Use ExternalProject to build libjpeg-turbo since it doesn't support add_subdirectory
+include(ExternalProject)
+ExternalProject_Add(libjpeg-turbo
+    SOURCE_DIR ${AVNC_LIBJPEG_SRC_DIR}
+    BINARY_DIR ${AVNC_LIBJPEG_BUILD_DIR}
+    CMAKE_ARGS
+        -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DANDROID_ABI=${ANDROID_ABI}
+        -DANDROID_PLATFORM=${ANDROID_PLATFORM}
+        -DANDROID_NDK=${ANDROID_NDK}
+        -DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}
+        -DCMAKE_SYSTEM_VERSION=${CMAKE_SYSTEM_VERSION}
+        -DENABLE_SHARED=OFF
+        -DENABLE_STATIC=ON
+        -DWITH_JPEG8=ON
+        -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+        -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+    BUILD_BYPRODUCTS ${AVNC_LIBJPEG_BUILD_DIR}/libturbojpeg.a
+    INSTALL_COMMAND ""
+)
 
 # Set these variables so FindJPEG can find the library
 set(JPEG_LIBRARY ${AVNC_LIBJPEG_BUILD_DIR}/libturbojpeg.a)
-set(JPEG_INCLUDE_DIR ${AVNC_LIBJPEG_SRC_DIR})
+set(JPEG_INCLUDE_DIR ${AVNC_LIBJPEG_SRC_DIR}/src)
 
 # Make sure libjpeg-turbo headers are available for libvncserver detection
 include_directories(${AVNC_LIBJPEG_SRC_DIR} ${AVNC_LIBJPEG_SRC_DIR}/src)
+
+# Create an interface library to properly link the external project
+add_library(turbojpeg STATIC IMPORTED)
+add_dependencies(turbojpeg libjpeg-turbo)
+set_target_properties(turbojpeg PROPERTIES
+    IMPORTED_LOCATION ${AVNC_LIBJPEG_BUILD_DIR}/libturbojpeg.a
+)
 
 
 ###############################################################################
