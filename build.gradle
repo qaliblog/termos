@@ -1,10 +1,14 @@
 buildscript {
     repositories {
         google()
-        mavenCentral()
         maven { url "https://maven.google.com" }
         maven { url "https://repo1.maven.org/maven2" }
-        // jcenter() removed - deprecated
+        maven { url "https://repository.jboss.org/nexus/content/repositories/thirdparty-releases" }
+        maven { url "https://repo.spring.io/plugins-release" }
+        maven { url "https://plugins.gradle.org/m2/" }
+        maven { url "https://dl.bintray.com/kotlin/kotlin-eap" }
+        maven { url "https://dl.bintray.com/kotlin/kotlin-dev" }
+        mavenCentral() // last resort due to rate limiting
     }
     dependencies {
         classpath "com.android.tools.build:gradle:8.1.4"
@@ -21,14 +25,15 @@ ext {
 allprojects {
     repositories {
         google()
-        mavenCentral()
         maven { url "https://maven.google.com" }
         maven { url "https://repo1.maven.org/maven2" }
         maven { url "https://jitpack.io" }
         maven { url "https://plugins.gradle.org/m2/" }
         maven { url "https://repository.jboss.org/nexus/content/repositories/thirdparty-releases" }
         maven { url "https://repo.spring.io/plugins-release" }
-        // jcenter() removed - deprecated
+        maven { url "https://dl.bintray.com/kotlin/kotlin-eap" }
+        maven { url "https://dl.bintray.com/kotlin/kotlin-dev" }
+        mavenCentral() // last resort due to rate limiting
     }
     
     configurations.all {
