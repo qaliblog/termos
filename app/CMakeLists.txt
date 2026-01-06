@@ -60,10 +60,13 @@ ExternalProject_Add(libjpeg-turbo
 
 # Set these variables so FindJPEG can find the library
 set(JPEG_LIBRARY ${AVNC_LIBJPEG_BUILD_DIR}/libturbojpeg.a)
-set(JPEG_INCLUDE_DIR ${AVNC_LIBJPEG_SRC_DIR})
+set(JPEG_INCLUDE_DIR ${CMAKE_BINARY_DIR})
+
+# Copy jpeglib.h to the binary directory for libvncserver detection
+configure_file(${AVNC_LIBJPEG_SRC_DIR}/src/jpeglib.h ${CMAKE_BINARY_DIR}/jpeglib.h COPYONLY)
 
 # Make sure libjpeg-turbo headers are available for libvncserver detection
-include_directories(${AVNC_LIBJPEG_SRC_DIR} ${AVNC_LIBJPEG_SRC_DIR}/src)
+include_directories(${AVNC_LIBJPEG_SRC_DIR} ${AVNC_LIBJPEG_SRC_DIR}/src ${CMAKE_BINARY_DIR})
 
 # Create an interface library to properly link the external project
 add_library(turbojpeg STATIC IMPORTED GLOBAL)
