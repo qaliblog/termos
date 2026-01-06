@@ -260,7 +260,7 @@ static void onGotCursorShape(rfbClient *client, int xHot, int yHot, int width, i
 static void setCallbacks(rfbClient *client) {
     client->GetPassword = onGetPassword;
     client->GetCredential = onGetCredential;
-    client->VerifyServerCertificate = onVerifyServerCertificate;
+    // client->VerifyServerCertificate = onVerifyServerCertificate; // Not available in current libvncserver
     client->Bell = onBell;
     client->GotXCutText = onGotXCutTextLatin1;
     client->GotXCutTextUTF8 = onGotXCutTextUTF8;
@@ -288,7 +288,7 @@ Java_com_gaurav_avnc_vnc_VncClient_nativeClientCreate(JNIEnv *env, jobject thiz)
 
     setCallbacks(client);
     client->canHandleNewFBSize = TRUE;
-    client->interruptFd = ex->interruptReadFd;
+    // client->interruptFd = ex->interruptReadFd; // Not available in current libvncserver
 
     //Attach reference to managed object
     auto obj = env->NewGlobalRef(thiz);
@@ -360,7 +360,8 @@ extern "C"
 JNIEXPORT jboolean JNICALL
 Java_com_gaurav_avnc_vnc_VncClient_nativeIsServerMacOS(JNIEnv *env, jobject thiz, jlong client_ptr) {
     auto client = (rfbClient *) client_ptr;
-    return client->serverMajor == 3 && client->serverMinor == 889;
+    // return client->serverMajor == 3 && client->serverMinor == 889; // Not available in current libvncserver
+    return false; // TODO: Implement version checking when available
 }
 
 extern "C"
@@ -393,7 +394,8 @@ Java_com_gaurav_avnc_vnc_VncClient_nativeProcessServerMessage(JNIEnv *env, jobje
                                                               jlong client_ptr) {
     auto client = (rfbClient *) client_ptr;
 
-    auto waitResult = WaitForMessageInterruptible(client, 1000000, client->interruptFd);
+    // auto waitResult = WaitForMessageInterruptible(client, 1000000, client->interruptFd); // interruptFd not available
+    auto waitResult = WaitForMessage(client, 1000000); // Use regular WaitForMessage instead
 
     if (waitResult == 0) // Timeout
         return JNI_TRUE;
@@ -475,7 +477,8 @@ extern "C"
 JNIEXPORT void JNICALL
 Java_com_gaurav_avnc_vnc_VncClient_nativePauseFramebufferUpdates(JNIEnv *env, jobject thiz, jlong client_ptr,
                                                                  jboolean pause) {
-    ((rfbClient *) client_ptr)->pauseFramebufferUpdates = pause;
+    // ((rfbClient *) client_ptr)->pauseFramebufferUpdates = pause; // Not available in current libvncserver
+    // TODO: Implement framebuffer update pausing when available
 }
 
 extern "C"
