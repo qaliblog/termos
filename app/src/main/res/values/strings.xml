@@ -371,4 +371,22 @@
     <string name="pref_orientation_option_portrait">Portrait</string>
     <string name="pref_orientation_option_landscape">Landscape</string>
 
+    <!-- Additional viewer preference strings -->
+    <string name="pref_orientation">Screen orientation</string>
+    <string name="pref_keep_screen_on">Keep screen ON</string>
+    <string name="pref_fullscreen">Fullscreen</string>
+    <string name="pref_display_cutout">Extend into cutout area</string>
+    <string name="pref_enable_pip">Picture-in-picture</string>
+    <string name="pref_zoom">Zoom</string>
+    <string name="pref_zoom_min">Minimum</string>
+    <string name="pref_zoom_max">Maximum</string>
+    <string name="pref_per_orientation_zoom">Separate zoom for each orientation</string>
+    <string name="pref_toolbar">Toolbar</string>
+    <string name="pref_toolbar_alignment">Alignment</string>
+    <string name="pref_toolbar_alignment_option_start">Start</string>
+    <string name="pref_toolbar_alignment_option_end">End</string>
+    <string name="pref_toolbar_open_with_swipe">Swipe-in from edge to open</string>
+    <string name="pref_toolbar_open_with_button">Show button to open</string>
+    <string name="pref_show_gesture_style_toggle">Show gesture style toggle</string>
+
 </resources>

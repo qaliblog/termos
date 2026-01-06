@@ -174,4 +174,13 @@
         <item>landscape</item>
     </string-array>
 
+    <string-array name="toolbar_alignment_entries">
+        <item>@string/pref_toolbar_alignment_option_start</item>
+        <item>@string/pref_toolbar_alignment_option_end</item>
+    </string-array>
+    <string-array name="toolbar_alignment_values">
+        <item>start</item>
+        <item>end</item>
+    </string-array>
+
 </resources>
