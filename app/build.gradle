@@ -1,6 +1,6 @@
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
-// apply plugin: 'kotlin-kapt'  // Temporarily disabled to isolate compilation issue
+// kotlin-kapt plugin completely removed
 
 ext {
     // The packageVariant defines the bootstrap variant that will be included in the app APK.
@@ -199,6 +199,13 @@ android {
 
 kotlin {
     jvmToolchain(11)
+}
+
+// Explicitly disable kapt tasks
+tasks.whenTaskAdded { task ->
+    if (task.name.startsWith('kapt')) {
+        task.enabled = false
+    }
 }
 
 dependencies {
