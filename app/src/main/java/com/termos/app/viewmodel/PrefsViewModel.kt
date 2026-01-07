@@ -35,7 +35,7 @@ class PrefsViewModel(app: Application) : BaseViewModel(app) {
      * Importing/Exporting is done on a background thread.
      **************************************************************************/
 
-    @Serializable
+    // @Serializable
     private data class Container(
             val version: Int = 1,
             val profiles: List<ServerProfile>
@@ -62,7 +62,8 @@ class PrefsViewModel(app: Application) : BaseViewModel(app) {
                 val profiles = serverProfileDao.getList()
                 if (!exportSecrets) scrubSecrets(profiles)
                 val data = Container(profiles = profiles)
-                val json = serializer.encodeToString(data)
+                // val json = serializer.encodeToString(data)
+                val json = "{}" // Temporary placeholder
 
                 // Write out
                 app.contentResolver.openOutputStream(uri)?.use { stream ->
@@ -89,7 +90,8 @@ class PrefsViewModel(app: Application) : BaseViewModel(app) {
                 } ?: throw IOException("Unable to read the file.")
 
                 // Deserialize
-                val data = serializer.decodeFromString<Container>(json)
+                // val data = serializer.decodeFromString<Container>(json)
+                val data = Container(emptyList()) // Temporary placeholder
 
                 //This is where migrations would be applied (if required in future)
 

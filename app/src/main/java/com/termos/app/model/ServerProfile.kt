@@ -22,8 +22,8 @@ import kotlin.reflect.KProperty
  *
  * Some fields remain unused until that feature is implemented.
  */
-@Parcelize
-@Serializable
+// @Parcelize
+// @Serializable
 @Entity(tableName = "profiles")
 data class ServerProfile(
 
