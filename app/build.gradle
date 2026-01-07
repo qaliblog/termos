@@ -70,11 +70,11 @@ android {
             }
         }
 
-        javaCompileOptions {
-            annotationProcessorOptions {
-                arguments += ["room.schemaLocation": "$projectDir/roomSchema/".toString()]
-            }
-        }
+        // javaCompileOptions {
+        //     annotationProcessorOptions {
+        //         arguments += ["room.schemaLocation": "$projectDir/roomSchema/".toString()]
+        //     }
+        // }
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -240,7 +240,7 @@ dependencies {
     implementation "androidx.room:room-runtime:$roomVersion"
     implementation "androidx.room:room-ktx:$roomVersion"
     // kapt "androidx.room:room-compiler:$roomVersion"  // Temporarily disabled
-    annotationProcessor "androidx.room:room-compiler:$roomVersion"
+    // annotationProcessor "androidx.room:room-compiler:$roomVersion"
 
     implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3'
     implementation 'org.connectbot:sshlib:2.2.24'
