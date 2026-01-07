@@ -24,7 +24,7 @@ import kotlin.reflect.KProperty
  */
 // @Parcelize
 // @Serializable
-@Entity(tableName = "profiles")
+// @Entity(tableName = "profiles")
 data class ServerProfile(
 
         @PrimaryKey(autoGenerate = true)

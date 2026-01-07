@@ -14,7 +14,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.termos.app.model.ServerProfile
 
-@Database(entities = [ServerProfile::class], version = MainDb.VERSION, exportSchema = false)
+// @Database(entities = [ServerProfile::class], version = MainDb.VERSION, exportSchema = false)
 abstract class MainDb : RoomDatabase() {
     abstract val serverProfileDao: ServerProfileDao
 

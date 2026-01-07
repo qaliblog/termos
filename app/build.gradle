@@ -240,7 +240,7 @@ dependencies {
     def roomVersion = "2.7.1"
     implementation "androidx.room:room-runtime:$roomVersion"
     implementation "androidx.room:room-ktx:$roomVersion"
-    kapt "androidx.room:room-compiler:$roomVersion"
+    // kapt "androidx.room:room-compiler:$roomVersion"
 
     implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3'
     implementation 'org.connectbot:sshlib:2.2.24'

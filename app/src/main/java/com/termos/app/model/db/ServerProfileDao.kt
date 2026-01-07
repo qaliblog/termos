@@ -16,7 +16,7 @@ import androidx.room.Update
 import androidx.room.Upsert
 import com.termos.app.model.ServerProfile
 
-@Dao
+// @Dao
 interface ServerProfileDao {
 
     @Query("SELECT * FROM profiles")
