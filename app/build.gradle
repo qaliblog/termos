@@ -205,6 +205,17 @@ kotlin {
 tasks.whenTaskAdded { task ->
     if (task.name.startsWith('kapt')) {
         task.enabled = false
+        println "Disabled kapt task: ${task.name}"
+    }
+}
+
+// Additional safeguard - disable kapt before any compilation
+gradle.taskGraph.whenReady { taskGraph ->
+    taskGraph.allTasks.each { task ->
+        if (task.name.contains('kapt')) {
+            task.enabled = false
+            println "Safeguard: Disabled kapt task in taskGraph: ${task.name}"
+        }
     }
 }
 
