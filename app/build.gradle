@@ -1,6 +1,6 @@
 apply plugin: 'com.android.application'
-apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-kapt'  // Re-enabled with proper configuration
+// apply plugin: 'kotlin-android'  // Temporarily disabled to test
+// apply plugin: 'kotlin-kapt'  // Re-enabled with proper configuration
 
 ext {
     // The packageVariant defines the bootstrap variant that will be included in the app APK.
